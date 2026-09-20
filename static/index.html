@@ -143,7 +143,7 @@
 <body>
   <header>
     <h1>QwenHub</h1>
-    <span>Livepeer Agent Director</span>
+    <span id="modeBadge">web</span>
   </header>
 
   <main id="chat"></main>
@@ -163,6 +163,9 @@
   <input type="file" id="fileInput" accept="image/*,video/*" style="display:none" />
 
   <script>
+    const api = typeof window !== 'undefined' && window.electronAPI ? window.electronAPI : null;
+    document.getElementById('modeBadge').textContent = api ? 'desktop' : 'web';
+
     const chat = document.getElementById('chat');
     const input = document.getElementById('input');
     const sendBtn = document.getElementById('sendBtn');
@@ -180,11 +183,11 @@
       div.className = `msg ${role}`;
       div.innerHTML = html;
       if (mediaUrl) {
-        const tag = mediaUrl.toLowerCase().endsWith('.mp4') || mediaUrl.toLowerCase().endsWith('.webm') ? 'video' : 'img';
-        const el = document.createElement(tag);
+        const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(mediaUrl);
+        const el = document.createElement(isVideo ? 'video' : 'img');
         el.src = mediaUrl;
-        if (tag === 'video') { el.controls = true; el.playsInline = true; }
-        el.onclick = () => { useAsReference(mediaUrl, tag); };
+        if (isVideo) { el.controls = true; el.playsInline = true; }
+        el.onclick = () => useAsReference(mediaUrl, isVideo ? 'video' : 'image');
         div.appendChild(el);
         const hint = document.createElement('div');
         hint.className = 'hint';
@@ -195,16 +198,21 @@
       chat.scrollTop = chat.scrollHeight;
     }
 
-    function useAsReference(url, type) {
-      fetch(url).then(r => r.blob()).then(blob => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const b64 = reader.result.split(',')[1];
-          attached = { type: type === 'video' ? 'video' : 'image', b64, url };
-          renderAttachment();
-        };
-        reader.readAsDataURL(blob);
-      });
+    async function useAsReference(url, type) {
+      let b64;
+      if (api && url.startsWith('file://')) {
+        b64 = await api.loadFile(url);
+      } else {
+        const blob = await fetch(url).then(r => r.blob());
+        b64 = await new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result.split(',')[1]);
+          r.onerror = reject;
+          r.readAsDataURL(blob);
+        });
+      }
+      attached = { type, b64, url };
+      renderAttachment();
     }
 
     function renderAttachment() {
@@ -214,8 +222,9 @@
       div.className = 'thumb';
       const tag = attached.type === 'video' ? 'video' : 'img';
       const el = document.createElement(tag);
-      el.src = `data:${attached.type === 'video' ? 'video/mp4' : 'image/jpeg'};base64,${attached.b64}`;
-      if (tag === 'video') { el.muted = true; }
+      const mime = attached.type === 'video' ? 'video/mp4' : 'image/jpeg';
+      el.src = `data:${mime};base64,${attached.b64}`;
+      if (tag === 'video') el.muted = true;
       div.appendChild(el);
       const rm = document.createElement('button');
       rm.textContent = '×';
@@ -253,7 +262,6 @@
         attachmentHtml = `<div class="attachment-chip">${attached.type === 'video' ? '🎬' : '🖼️'} ${attached.type} attached</div><br>`;
       }
       appendBubble('user', attachmentHtml + escapeHtml(userText));
-
       messages.push({ role: 'user', content: userText });
 
       input.value = '';
@@ -270,17 +278,22 @@
       renderAttachment();
 
       try {
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Server error');
+        let data;
+        if (api) {
+          data = await api.chat(body);
+        } else {
+          const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          data = await res.json();
+          if (!res.ok) throw new Error(data.detail || 'Server error');
+        }
 
         messages.push({ role: 'assistant', content: data.message || '' });
         appendBubble('bot', escapeHtml(data.message || 'Done.'), data.media_url);
-        if (data.media_url) lastOutputUrl = window.location.origin + data.media_url;
+        if (data.media_url) lastOutputUrl = data.media_url;
       } catch (err) {
         appendBubble('bot', '⚠️ ' + escapeHtml(err.message));
       } finally {

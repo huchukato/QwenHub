@@ -1,0 +1,44 @@
+{
+  "name": "qwenhub",
+  "version": "0.1.0",
+  "description": "QwenHub — chat director for Livepeer Agent",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux"
+  },
+  "keywords": ["livepeer", "qwen", "ai", "video-generation"],
+  "author": "huchukato",
+  "license": "GPL-3.0",
+  "devDependencies": {
+    "electron": "^32.1.2",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "openai": "^4.65.0"
+  },
+  "build": {
+    "appId": "ai.huchukato.qwenhub",
+    "productName": "QwenHub",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "static/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "target": ["dmg", "zip"]
+    },
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "linux": {
+      "target": ["AppImage", "deb"]
+    }
+  }
+}

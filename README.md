@@ -13,7 +13,24 @@ QwenHub lets you talk to a Qwen-style LLM (via any OpenAI-compatible API) and ha
 3. **Livepeer MCP** runs the generation asynchronously, polls for completion, and downloads the result.
 4. **Preview** the image or video in chat and click it to use as the next reference.
 
-## Run locally
+## Desktop app (Electron)
+
+```bash
+cp .env.example .env
+# edit .env with your OpenAI-compatible key and optional Livepeer key
+npm install
+npm start
+```
+
+To build:
+
+```bash
+npm run build:mac    # or :win, :linux
+```
+
+The Electron main process handles the LLM call and Livepeer MCP directly; no Python server is required.
+
+## Web / server mode (FastAPI + Python)
 
 ```bash
 cp .env.example .env
@@ -26,7 +43,7 @@ uvicorn main:app --reload
 
 Open `http://localhost:8000`.
 
-## Deploy
+## Docker
 
 ```bash
 docker build -t qwenhub .
@@ -48,10 +65,14 @@ Works on Hugging Face Spaces, Render, Railway, or any container host.
 
 ```
 QwenHub/
-├── main.py              # FastAPI backend
-├── livepeer_client.py   # Raw MCP client for Livepeer
-├── llm_client.py        # OpenAI-compatible chat + system prompt
-├── static/index.html    # Chat UI
+├── electron/
+│   ├── main.js        # Electron main process (LLM + Livepeer)
+│   └── preload.js     # Secure renderer bridge
+├── static/index.html   # Chat UI (works in Electron and web)
+├── main.py             # FastAPI backend (web mode)
+├── livepeer_client.py  # Raw MCP client for Livepeer (web mode)
+├── llm_client.py       # OpenAI-compatible chat (web mode)
+├── package.json
 ├── Dockerfile
 └── requirements.txt
 ```

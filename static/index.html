@@ -204,14 +204,17 @@
       color: var(--muted);
       margin-top: 6px;
     }
-    .modal-content input {
+    .modal-content input,
+    .modal-content select {
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 8px;
       color: var(--text);
       padding: 10px;
       font-size: 13px;
+      height: 40px;
     }
+    .modal-content select option { background: var(--panel); color: var(--text); }
     .modal-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
     .settings-note { font-size: 11px; color: var(--muted); margin: 0; }
     .model-link {
@@ -264,15 +267,16 @@
         <h2 data-i18n="settingsTitle">Settings</h2>
         <button id="closeSettings">×</button>
       </div>
-      <label data-i18n="baseUrlLabel">LLM base URL</label>
-      <input type="text" id="settingsBaseUrl" list="baseUrlSuggestions" data-i18n-placeholder="baseUrlPlaceholder" placeholder="https://openrouter.ai/api/v1" />
-      <datalist id="baseUrlSuggestions">
-        <option value="https://openrouter.ai/api/v1"></option>
-        <option value="http://localhost:11434/v1"></option>
-        <option value="http://localhost:8080/v1"></option>
-        <option value="http://localhost:5000/v1"></option>
-        <option value="http://localhost:5001/v1"></option>
-      </datalist>
+      <label data-i18n="baseUrlLabel">LLM provider</label>
+      <select id="settingsService">
+        <option value="openrouter" data-i18n="providerOpenRouter">OpenRouter</option>
+        <option value="ollama" data-i18n="providerOllama">Ollama (local)</option>
+        <option value="llamacpp" data-i18n="providerLlamaCpp">llama.cpp server (local)</option>
+        <option value="lmstudio" data-i18n="providerLmStudio">LM Studio (local)</option>
+        <option value="kobold" data-i18n="providerKobold">KoboldCpp / text-gen-webui (local)</option>
+        <option value="custom" data-i18n="providerCustom">Custom URL</option>
+      </select>
+      <input type="text" id="settingsCustomUrl" data-i18n-placeholder="customUrlPlaceholder" placeholder="https://api.example.com/v1" style="display:none" />
       <label data-i18n="apiKeyLabel">LLM API key</label>
       <input type="password" id="settingsApiKey" data-i18n-placeholder="apiKeyPlaceholder" placeholder="sk-..." />
       <div class="field-note" data-i18n="apiKeyNote">Leave empty for local endpoints (Ollama, llama.cpp, LM Studio, KoboldCpp).</div>
@@ -330,8 +334,14 @@
         hint: "Attach a reference image or click a generated result to use it as the next reference.",
         welcome: "Hi. Describe what you want — image or video — or attach a reference image to animate it with Livepeer.",
         settingsTitle: "Settings",
-        baseUrlLabel: "LLM base URL",
-        baseUrlPlaceholder: "https://openrouter.ai/api/v1",
+        baseUrlLabel: "LLM provider",
+        providerOpenRouter: "OpenRouter",
+        providerOllama: "Ollama (local)",
+        providerLlamaCpp: "llama.cpp server (local)",
+        providerLmStudio: "LM Studio (local)",
+        providerKobold: "KoboldCpp / text-gen-webui (local)",
+        providerCustom: "Custom URL",
+        customUrlPlaceholder: "https://api.example.com/v1",
         apiKeyLabel: "LLM API key",
         apiKeyPlaceholder: "sk-...",
         apiKeyNote: "Leave empty for local endpoints (Ollama, llama.cpp, LM Studio, KoboldCpp).",
@@ -360,8 +370,14 @@
         hint: "Allega un'immagine di riferimento o clicca su un risultato generato per usarlo come prossimo riferimento.",
         welcome: "Ciao. Descrivi cosa vuoi — immagine o video — oppure allega un'immagine di riferimento per animarla con Livepeer.",
         settingsTitle: "Impostazioni",
-        baseUrlLabel: "URL base LLM",
-        baseUrlPlaceholder: "https://openrouter.ai/api/v1",
+        baseUrlLabel: "Provider LLM",
+        providerOpenRouter: "OpenRouter",
+        providerOllama: "Ollama (locale)",
+        providerLlamaCpp: "llama.cpp server (locale)",
+        providerLmStudio: "LM Studio (locale)",
+        providerKobold: "KoboldCpp / text-gen-webui (locale)",
+        providerCustom: "URL personalizzato",
+        customUrlPlaceholder: "https://api.example.com/v1",
         apiKeyLabel: "API key LLM",
         apiKeyPlaceholder: "sk-...",
         apiKeyNote: "Lascia vuota per endpoint locali (Ollama, llama.cpp, LM Studio, KoboldCpp).",
@@ -423,11 +439,38 @@
     const settingsBtn = document.getElementById('settingsBtn');
     const closeSettings = document.getElementById('closeSettings');
     const saveSettingsBtn = document.getElementById('saveSettings');
-    const settingsBaseUrl = document.getElementById('settingsBaseUrl');
+    const settingsService = document.getElementById('settingsService');
+    const settingsCustomUrl = document.getElementById('settingsCustomUrl');
     const settingsApiKey = document.getElementById('settingsApiKey');
     const settingsModel = document.getElementById('settingsModel');
     const settingsLivepeerKey = document.getElementById('settingsLivepeerKey');
     const settingsNote = document.getElementById('settingsNote');
+
+    const SERVICE_URLS = {
+      openrouter: 'https://openrouter.ai/api/v1',
+      ollama: 'http://localhost:11434/v1',
+      llamacpp: 'http://localhost:8080/v1',
+      lmstudio: 'http://localhost:5000/v1',
+      kobold: 'http://localhost:5001/v1',
+    };
+
+    function serviceFromUrl(url) {
+      for (const [key, val] of Object.entries(SERVICE_URLS)) {
+        if (url === val) return key;
+      }
+      return 'custom';
+    }
+
+    function currentBaseUrl() {
+      const svc = settingsService.value;
+      if (svc === 'custom') return settingsCustomUrl.value.trim();
+      return SERVICE_URLS[svc] || '';
+    }
+
+    function updateCustomUrlVisibility() {
+      const isCustom = settingsService.value === 'custom';
+      settingsCustomUrl.style.display = isCustom ? 'block' : 'none';
+    }
 
     async function openSettings() {
       if (api) {
@@ -438,7 +481,11 @@
         settingsBtn.disabled = true;
         return;
       }
-      settingsBaseUrl.value = settings.openai_base_url || '';
+      const url = settings.openai_base_url || SERVICE_URLS.openrouter;
+      const svc = serviceFromUrl(url);
+      settingsService.value = svc;
+      settingsCustomUrl.value = svc === 'custom' ? url : '';
+      updateCustomUrlVisibility();
       settingsApiKey.value = settings.openai_api_key || '';
       settingsModel.value = settings.model || '';
       settingsLivepeerKey.value = settings.livepeer_api_key || '';
@@ -452,7 +499,7 @@
     async function saveSettings() {
       if (!api) return;
       const updated = {
-        openai_base_url: settingsBaseUrl.value.trim(),
+        openai_base_url: currentBaseUrl(),
         openai_api_key: settingsApiKey.value.trim(),
         model: settingsModel.value.trim(),
         livepeer_api_key: settingsLivepeerKey.value.trim(),
@@ -461,6 +508,7 @@
       settingsModal.style.display = 'none';
     }
 
+    settingsService.onchange = updateCustomUrlVisibility;
     settingsBtn.onclick = openSettings;
     closeSettings.onclick = hideSettings;
     saveSettingsBtn.onclick = saveSettings;

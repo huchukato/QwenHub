@@ -401,27 +401,12 @@ ipcMain.handle('chat', async (_event, payload) => {
     let system = SYSTEM_PROMPT + '\n\nAVAILABLE CAPABILITIES:\n' + capBlock;
     if (lastOutputUrl) system += '\n\nLAST_GENERATED_OUTPUT_URL: ' + lastOutputUrl;
 
-    const openai = getOpenAI();
-    const completion = await openai.chat.completions.create({
-      model: defaultModel(),
-      messages: [{ role: 'system', content: system }, ...messages],
-      temperature: 0.6,
-      max_tokens: 2048,
-    });
-
-    const raw = stripFences(completion.choices[0].message.content || '{}');
+    const userText = userContent[0].text || '';
+    const explicit = userText.match(/\buse\s+([a-z0-9][a-z0-9._-]*)[.:]?\s*/i);
     let data;
-    try {
-      data = JSON.parse(raw);
-    } catch (e) {
-      throw new Error(`LLM did not return valid JSON: ${e.message}\nRaw: ${raw}`);
-    }
+    let action;
 
-    let action = data.action;
-    if (!action) {
-      const userText = userContent[0].text || '';
-      const explicit = userText.match(/\buse\s+([a-z0-9][a-z0-9._-]*)[.:]?\s*/i);
-      if (!explicit) return { message: data.message || '', action: null };
+    if (explicit) {
       const capability = resolveCapability(explicit[1], /i2v|t2v|video|minimax|kling|ltx|veo|seedance|wan/i.test(explicit[1]) ? 'video' : 'image');
       const mode = /i2v|t2v|video|minimax|kling|ltx|veo|seedance|wan/i.test(capability || '') ? 'video' : 'image';
       action = {
@@ -432,6 +417,24 @@ ipcMain.handle('chat', async (_event, payload) => {
         aspect_ratio: (userText.match(/\b(\d+:\d+)\b/) || [])[1] || '16:9',
         use_reference: mode === 'video' && Boolean(imageB64 || lastOutputUrl),
       };
+      data = { message: '' };
+    } else {
+      const openai = getOpenAI();
+      const completion = await openai.chat.completions.create({
+        model: defaultModel(),
+        messages: [{ role: 'system', content: system }, ...messages],
+        temperature: 0.6,
+        max_tokens: 2048,
+      });
+
+      const raw = stripFences(completion.choices[0].message.content || '{}');
+      try {
+        data = JSON.parse(raw);
+      } catch (e) {
+        throw new Error(`LLM did not return valid JSON: ${e.message}\nRaw: ${raw}`);
+      }
+      action = data.action;
+      if (!action) return { message: data.message || '', action: null };
     }
 
     // Validate/fallback capability name against Livepeer list

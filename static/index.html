@@ -149,6 +149,17 @@
     .brand { display: flex; align-items: center; gap: 12px; }
     #logo { width: 32px; height: 32px; border-radius: 8px; }
     .header-actions { display: flex; align-items: center; gap: 10px; }
+    #langBtn {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 8px;
+      text-transform: uppercase;
+    }
+    #langBtn:hover { color: var(--text); border-color: var(--accent); }
     #settingsBtn {
       background: transparent;
       color: var(--muted);
@@ -212,6 +223,7 @@
       <h1>QwenHub</h1>
     </div>
     <div class="header-actions">
+      <button id="langBtn" title="Switch language">IT</button>
       <button id="settingsBtn" title="Settings">⚙</button>
       <span id="modeBadge">web</span>
     </div>
@@ -224,11 +236,11 @@
   <section id="composer">
     <div id="preview"></div>
     <div class="row">
-      <button id="attachBtn" title="Attach image/video">+</button>
-      <textarea id="input" placeholder="Describe the shot… (e.g. a cinematic 16:9 photo of a woman at golden hour)"></textarea>
-      <button id="sendBtn">Send</button>
+      <button id="attachBtn" data-i18n-title="attachTooltip" title="Attach image/video">+</button>
+      <textarea id="input" data-i18n-placeholder="placeholder" placeholder="Describe the shot…"></textarea>
+      <button id="sendBtn" data-i18n="send">Send</button>
     </div>
-    <div class="hint">Attach a reference image or click a generated result to use it as the next reference.</div>
+    <div class="hint" data-i18n="hint">Attach a reference image or click a generated result to use it as the next reference.</div>
   </section>
 
   <input type="file" id="fileInput" accept="image/*,video/*" style="display:none" />
@@ -236,19 +248,19 @@
   <div id="settingsModal" class="modal" style="display:none">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Settings</h2>
+        <h2 data-i18n="settingsTitle">Settings</h2>
         <button id="closeSettings">×</button>
       </div>
-      <label>LLM base URL</label>
-      <input type="text" id="settingsBaseUrl" placeholder="https://openrouter.ai/api/v1" />
-      <label>LLM API key</label>
-      <input type="password" id="settingsApiKey" placeholder="sk-..." />
-      <label>Model</label>
-      <input type="text" id="settingsModel" placeholder="qwen/qwen-2.5-7b-instruct" />
-      <label>Livepeer API key (optional)</label>
-      <input type="password" id="settingsLivepeerKey" placeholder="leave empty for demo mode" />
+      <label data-i18n="baseUrlLabel">LLM base URL</label>
+      <input type="text" id="settingsBaseUrl" data-i18n-placeholder="baseUrlPlaceholder" placeholder="https://openrouter.ai/api/v1" />
+      <label data-i18n="apiKeyLabel">LLM API key</label>
+      <input type="password" id="settingsApiKey" data-i18n-placeholder="apiKeyPlaceholder" placeholder="sk-..." />
+      <label data-i18n="modelLabel">Model</label>
+      <input type="text" id="settingsModel" data-i18n-placeholder="modelPlaceholder" placeholder="qwen/qwen-2.5-7b-instruct" />
+      <label data-i18n="livepeerKeyLabel">Livepeer API key (optional)</label>
+      <input type="password" id="settingsLivepeerKey" data-i18n-placeholder="livepeerKeyPlaceholder" placeholder="leave empty for demo mode" />
       <div class="modal-actions">
-        <button id="saveSettings">Save</button>
+        <button id="saveSettings" data-i18n="save">Save</button>
       </div>
       <p class="settings-note" id="settingsNote"></p>
     </div>
@@ -256,7 +268,78 @@
 
   <script>
     const api = typeof window !== 'undefined' && window.electronAPI ? window.electronAPI : null;
-    document.getElementById('modeBadge').textContent = api ? 'desktop' : 'web';
+
+    const i18n = {
+      en: {
+        placeholder: "Describe the shot… (e.g. a cinematic 16:9 photo of a woman at golden hour)",
+        hint: "Attach a reference image or click a generated result to use it as the next reference.",
+        welcome: "Hi. Describe what you want — image or video — or attach a reference image to animate it with Livepeer.",
+        settingsTitle: "Settings",
+        baseUrlLabel: "LLM base URL",
+        baseUrlPlaceholder: "https://openrouter.ai/api/v1",
+        apiKeyLabel: "LLM API key",
+        apiKeyPlaceholder: "sk-...",
+        modelLabel: "Model",
+        modelPlaceholder: "qwen/qwen-2.5-7b-instruct",
+        livepeerKeyLabel: "Livepeer API key (optional)",
+        livepeerKeyPlaceholder: "leave empty for demo mode",
+        save: "Save",
+        settingsSaved: "Settings are saved locally in the app.",
+        settingsServer: "Settings are managed by the server in web mode.",
+        attachTooltip: "Attach image/video",
+        send: "Send",
+        desktop: "desktop",
+        web: "web",
+        clickResult: "Click result to attach as reference",
+        spinner: "Qwen is directing Livepeer…",
+        attachedImage: "image attached",
+        attachedVideo: "video attached",
+      },
+      it: {
+        placeholder: "Descrivi la scena… (es. una foto cinematografica 16:9 di una donna alla golden hour)",
+        hint: "Allega un'immagine di riferimento o clicca su un risultato generato per usarlo come prossimo riferimento.",
+        welcome: "Ciao. Descrivi cosa vuoi — immagine o video — oppure allega un'immagine di riferimento per animarla con Livepeer.",
+        settingsTitle: "Impostazioni",
+        baseUrlLabel: "URL base LLM",
+        baseUrlPlaceholder: "https://openrouter.ai/api/v1",
+        apiKeyLabel: "API key LLM",
+        apiKeyPlaceholder: "sk-...",
+        modelLabel: "Modello",
+        modelPlaceholder: "qwen/qwen-2.5-7b-instruct",
+        livepeerKeyLabel: "API key Livepeer (opzionale)",
+        livepeerKeyPlaceholder: "lascia vuoto per la modalità demo",
+        save: "Salva",
+        settingsSaved: "Le impostazioni sono salvate localmente nell'app.",
+        settingsServer: "Le impostazioni sono gestite dal server in modalità web.",
+        attachTooltip: "Allega immagine/video",
+        send: "Invia",
+        desktop: "desktop",
+        web: "web",
+        clickResult: "Clicca il risultato per allegarlo come riferimento",
+        spinner: "Qwen sta dirigendo Livepeer…",
+        attachedImage: "immagine allegata",
+        attachedVideo: "video allegato",
+      }
+    };
+
+    let currentLang = 'en';
+    function t(key) { return (i18n[currentLang] && i18n[currentLang][key]) || i18n.en[key] || key; }
+
+    function applyLang() {
+      document.getElementById('langBtn').textContent = currentLang === 'en' ? 'IT' : 'EN';
+      document.getElementById('modeBadge').textContent = api ? t('desktop') : t('web');
+      document.getElementById('spinner').textContent = t('spinner');
+      document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => el.placeholder = t(el.dataset.i18nPlaceholder));
+      document.querySelectorAll('[data-i18n-title]').forEach(el => el.title = t(el.dataset.i18nTitle));
+    }
+
+    document.getElementById('langBtn').onclick = () => {
+      currentLang = currentLang === 'en' ? 'it' : 'en';
+      applyLang();
+    };
+
+    applyLang();
 
     const chat = document.getElementById('chat');
     const input = document.getElementById('input');
@@ -284,9 +367,9 @@
     async function openSettings() {
       if (api) {
         settings = await api.getSettings();
-        settingsNote.textContent = 'Settings are saved locally in the app.';
+        settingsNote.textContent = t('settingsSaved');
       } else {
-        settingsNote.textContent = 'Settings are managed by the server in web mode.';
+        settingsNote.textContent = t('settingsServer');
         settingsBtn.disabled = true;
         return;
       }
@@ -331,7 +414,7 @@
         div.appendChild(el);
         const hint = document.createElement('div');
         hint.className = 'hint';
-        hint.textContent = 'Click result to attach as reference';
+        hint.textContent = t('clickResult');
         div.appendChild(hint);
       }
       chat.appendChild(div);
@@ -395,11 +478,12 @@
     async function send() {
       const text = input.value.trim();
       if (!text && !attached.b64) return;
-      const userText = text || (attached.type === 'video' ? '[attached video]' : '[attached image]');
+      const userText = text || (attached.type === 'video' ? t('attachedVideo') : t('attachedImage'));
 
       let attachmentHtml = '';
       if (attached.b64) {
-        attachmentHtml = `<div class="attachment-chip">${attached.type === 'video' ? '🎬' : '🖼️'} ${attached.type} attached</div><br>`;
+        const chipLabel = attached.type === 'video' ? t('attachedVideo') : t('attachedImage');
+        attachmentHtml = `<div class="attachment-chip">${attached.type === 'video' ? '🎬' : '🖼️'} ${chipLabel}</div><br>`;
       }
       appendBubble('user', attachmentHtml + escapeHtml(userText));
       messages.push({ role: 'user', content: userText });
@@ -449,7 +533,7 @@
       return s.replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
     }
 
-    appendBubble('bot', 'Hi. Describe what you want — image or video — or attach a reference image to animate it with Livepeer.');
+    appendBubble('bot', t('welcome'));
   </script>
 </body>
 </html>

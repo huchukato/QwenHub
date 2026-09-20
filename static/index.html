@@ -141,9 +141,20 @@
     #spinner {
       display: none;
       align-self: center;
+      align-items: center;
+      gap: 9px;
       color: var(--muted);
       font-size: 13px;
     }
+    .spinner-ring {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .hint { color: var(--muted); font-size: 12px; text-align: center; }
 
     .brand { display: flex; align-items: center; gap: 12px; }
@@ -247,7 +258,7 @@
 
   <main id="chat"></main>
 
-  <div id="spinner">Qwen is directing Livepeer…</div>
+  <div id="spinner"><span class="spinner-ring" aria-hidden="true"></span><span id="spinnerText">Qwen is directing Livepeer…</span></div>
 
   <section id="composer">
     <div id="preview"></div>
@@ -409,7 +420,7 @@
     function applyLang() {
       document.getElementById('langBtn').textContent = currentLang === 'en' ? 'IT' : 'EN';
       document.getElementById('modeBadge').textContent = api ? t('desktop') : t('web');
-      document.getElementById('spinner').textContent = t('spinner');
+      document.getElementById('spinnerText').textContent = t('spinner');
       document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
       document.querySelectorAll('[data-i18n-placeholder]').forEach(el => el.placeholder = t(el.dataset.i18nPlaceholder));
       document.querySelectorAll('[data-i18n-title]').forEach(el => el.title = t(el.dataset.i18nTitle));
@@ -611,7 +622,7 @@
       messages.push({ role: 'user', content: userText });
 
       input.value = '';
-      spinner.style.display = 'block';
+      spinner.style.display = 'flex';
       sendBtn.disabled = true;
 
       const body = {

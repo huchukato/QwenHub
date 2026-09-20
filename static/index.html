@@ -334,6 +334,7 @@
         attachedImage: "image attached",
         attachedVideo: "video attached",
         rateLimitError: "Rate limit hit by the free model provider. Wait a few seconds and try again, or switch to a non-free / local model in Settings.",
+        providerError: "The model provider is temporarily unavailable. Wait a moment and retry, or switch model/provider in Settings.",
       },
       it: {
         placeholder: "Descrivi la scena… (es. una foto cinematografica 16:9 di una donna alla golden hour)",
@@ -363,6 +364,7 @@
         attachedImage: "immagine allegata",
         attachedVideo: "video allegato",
         rateLimitError: "Rate limit raggiunto dal provider del modello gratuito. Aspetta qualche secondo e riprova, oppure passa a un modello a pagamento o locale nelle Impostazioni.",
+        providerError: "Il provider del modello è temporaneamente non disponibile. Aspetta un momento e riprova, oppure cambia modello/provider nelle Impostazioni.",
       }
     };
 
@@ -560,7 +562,10 @@
         }
 
         if (data.error) {
-          const errorMsg = data.error === 'rate_limit' ? t('rateLimitError') : (data.message || 'Something went wrong.');
+          let errorMsg;
+          if (data.error === 'rate_limit') errorMsg = t('rateLimitError');
+          else if (data.error === 'provider_error') errorMsg = t('providerError');
+          else errorMsg = data.message || 'Something went wrong.';
           appendBubble('bot', '⚠️ ' + escapeHtml(errorMsg));
         } else {
           messages.push({ role: 'assistant', content: data.message || '' });

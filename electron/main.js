@@ -346,10 +346,17 @@ ipcMain.handle('chat', async (_event, { messages, imageB64, videoB64, lastOutput
   } catch (err) {
     const status = err.status || (err.response && err.response.status);
     const is429 = status === 429 || /429|rate.limit|too many requests/i.test(err.message);
+    const isProviderError = (status && status >= 500 && status < 600) || /503|502|504|provider returned error/i.test(err.message);
     if (is429) {
       return {
         error: 'rate_limit',
         message: 'Rate limit hit by the free model provider. Wait a few seconds and try again, or switch to a non-free / local model in Settings.',
+      };
+    }
+    if (isProviderError) {
+      return {
+        error: 'provider_error',
+        message: 'The model provider is temporarily unavailable (HTTP ' + (status || '503') + '). Wait a moment and retry, or switch model/provider in Settings.',
       };
     }
     throw err;

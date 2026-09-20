@@ -79,8 +79,23 @@ docker run -p 8000:8000 --env-file .env qwenhub
 |---|---|---|
 | `OPENAI_BASE_URL` | `https://openrouter.ai/api/v1` | LLM API base URL |
 | `OPENAI_API_KEY` | *(required)* | LLM API key |
-| `MODEL` | `qwen/qwen-2.5-7b-instruct` | Chat model |
+| `MODEL` | `qwen/qwen-2.5-7b-instruct:free` | Chat model |
 | `LIVEPEER_API_KEY` | *(empty)* | Optional Livepeer key (demo mode works without it) |
+
+### 💰 Free models on OpenRouter
+
+Use the `:free` model variant suffix, e.g. `qwen/qwen-2.5-7b-instruct:free`, `qwen/qwen3.8-27b:free`, or the automatic `openrouter/free` router. Free endpoints are rate-limited and may be slower than paid ones.
+
+### 🏠 Local Qwen / local LLM
+
+Point `OPENAI_BASE_URL` to any OpenAI-compatible local server and set `OPENAI_API_KEY` to any non-empty string (or leave it empty if the server does not require auth):
+
+- **Ollama**: `http://localhost:11434/v1` — model: `qwen2.5:7b`
+- **llama.cpp server**: `http://localhost:8080/v1` — model: your GGUF filename
+- **LM Studio**: `http://localhost:5000/v1` — model: loaded model name
+- **KoboldCpp / text-generation-webui**: `http://localhost:5001/v1`
+
+For local image understanding, the endpoint must support vision inputs in the chat completions format.
 
 ## 🏗️ Architecture
 

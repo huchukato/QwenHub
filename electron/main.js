@@ -14,7 +14,7 @@ if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 const DEFAULT_SETTINGS = {
   openai_base_url: process.env.OPENAI_BASE_URL || 'https://openrouter.ai/api/v1',
   openai_api_key: process.env.OPENAI_API_KEY || '',
-  model: process.env.MODEL || 'qwen/qwen-2.5-7b-instruct',
+  model: process.env.MODEL || 'qwen/qwen-2.5-7b-instruct:free',
   livepeer_api_key: process.env.LIVEPEER_API_KEY || '',
 };
 

@@ -55,7 +55,7 @@ def _client() -> AsyncOpenAI:
 
 
 def _default_model() -> str:
-    return os.getenv("MODEL", "qwen/qwen-2.5-7b-instruct")
+    return os.getenv("MODEL", "qwen/qwen-2.5-7b-instruct:free")
 
 
 def _strip_json_fences(text: str) -> str:

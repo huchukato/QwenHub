@@ -221,6 +221,12 @@
       margin-top: -4px;
     }
     .model-link:hover { text-decoration: underline; }
+    .field-note {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: -6px;
+      line-height: 1.35;
+    }
   </style>
 </head>
 <body>
@@ -259,22 +265,34 @@
         <button id="closeSettings">×</button>
       </div>
       <label data-i18n="baseUrlLabel">LLM base URL</label>
-      <input type="text" id="settingsBaseUrl" data-i18n-placeholder="baseUrlPlaceholder" placeholder="https://openrouter.ai/api/v1" />
+      <input type="text" id="settingsBaseUrl" list="baseUrlSuggestions" data-i18n-placeholder="baseUrlPlaceholder" placeholder="https://openrouter.ai/api/v1" />
+      <datalist id="baseUrlSuggestions">
+        <option value="https://openrouter.ai/api/v1"></option>
+        <option value="http://localhost:11434/v1"></option>
+        <option value="http://localhost:8080/v1"></option>
+        <option value="http://localhost:5000/v1"></option>
+        <option value="http://localhost:5001/v1"></option>
+      </datalist>
       <label data-i18n="apiKeyLabel">LLM API key</label>
       <input type="password" id="settingsApiKey" data-i18n-placeholder="apiKeyPlaceholder" placeholder="sk-..." />
+      <div class="field-note" data-i18n="apiKeyNote">Leave empty for local endpoints (Ollama, llama.cpp, LM Studio, KoboldCpp).</div>
       <label data-i18n="modelLabel">Model</label>
       <input type="text" id="settingsModel" list="modelSuggestions" data-i18n-placeholder="modelPlaceholder" placeholder="qwen/qwen-2.5-7b-instruct" />
       <datalist id="modelSuggestions">
-        <option value="qwen/qwen-2.5-7b-instruct"></option>
-        <option value="qwen/qwen-2.5-72b-instruct"></option>
-        <option value="qwen/qwen-3-8b"></option>
-        <option value="openai/gpt-4o-mini"></option>
-        <option value="anthropic/claude-3.5-sonnet"></option>
-        <option value="google/gemini-flash-1.5"></option>
-        <option value="meta-llama/llama-3.1-8b-instruct"></option>
-        <option value="mistralai/mistral-7b-instruct"></option>
+        <option value="openrouter/free"></option>
+        <option value="qwen/qwen-2.5-7b-instruct:free"></option>
+        <option value="qwen/qwen-2.5-72b-instruct:free"></option>
+        <option value="qwen/qwen3.8-27b:free"></option>
+        <option value="qwen/qwen3-coder:free"></option>
+        <option value="google/gemini-flash-1.5:free"></option>
+        <option value="meta-llama/llama-3.1-8b-instruct:free"></option>
+        <option value="meta-llama/llama-3.2-3b-instruct:free"></option>
+        <option value="qwen2.5:7b"></option>
+        <option value="qwen2.5:14b"></option>
+        <option value="qwen3.8:27b"></option>
       </datalist>
       <a class="model-link" href="https://openrouter.ai/models" target="_blank" data-i18n="browseModels">Browse OpenRouter models</a>
+      <div class="field-note" data-i18n="modelNote">For OpenRouter append :free for free variants. For local endpoints use the local model name (e.g. qwen2.5:7b for Ollama).</div>
       <label data-i18n="livepeerKeyLabel">Livepeer API key (optional)</label>
       <input type="password" id="settingsLivepeerKey" data-i18n-placeholder="livepeerKeyPlaceholder" placeholder="leave empty for demo mode" />
       <div class="modal-actions">
@@ -297,9 +315,11 @@
         baseUrlPlaceholder: "https://openrouter.ai/api/v1",
         apiKeyLabel: "LLM API key",
         apiKeyPlaceholder: "sk-...",
+        apiKeyNote: "Leave empty for local endpoints (Ollama, llama.cpp, LM Studio, KoboldCpp).",
         modelLabel: "Model",
-        modelPlaceholder: "qwen/qwen-2.5-7b-instruct",
+        modelPlaceholder: "qwen/qwen-2.5-7b-instruct:free",
         browseModels: "Browse OpenRouter models",
+        modelNote: "For OpenRouter append :free for free variants. For local endpoints use the local model name (e.g. qwen2.5:7b for Ollama).",
         livepeerKeyLabel: "Livepeer API key (optional)",
         livepeerKeyPlaceholder: "leave empty for demo mode",
         save: "Save",
@@ -323,9 +343,11 @@
         baseUrlPlaceholder: "https://openrouter.ai/api/v1",
         apiKeyLabel: "API key LLM",
         apiKeyPlaceholder: "sk-...",
+        apiKeyNote: "Lascia vuota per endpoint locali (Ollama, llama.cpp, LM Studio, KoboldCpp).",
         modelLabel: "Modello",
-        modelPlaceholder: "qwen/qwen-2.5-7b-instruct",
+        modelPlaceholder: "qwen/qwen-2.5-7b-instruct:free",
         browseModels: "Sfoglia i modelli OpenRouter",
+        modelNote: "Per OpenRouter aggiungi :free per le varianti gratuite. Per endpoint locali usa il nome locale (es. qwen2.5:7b per Ollama).",
         livepeerKeyLabel: "API key Livepeer (opzionale)",
         livepeerKeyPlaceholder: "lascia vuoto per la modalità demo",
         save: "Salva",

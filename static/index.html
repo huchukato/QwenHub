@@ -241,6 +241,97 @@
       margin-top: -6px;
       line-height: 1.35;
     }
+    #mediaBtn {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+    }
+    #mediaBtn:hover, #mediaBtn.active { color: var(--text); border-color: var(--accent); }
+    #mediaSidebar {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: min(360px, 90vw);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      background: rgba(20, 28, 38, 0.98);
+      border-left: 1px solid var(--border);
+      box-shadow: -16px 0 36px rgba(0, 0, 0, 0.35);
+      transform: translateX(100%);
+      transition: transform 180ms ease;
+    }
+    #mediaSidebar.open { transform: translateX(0); }
+    .media-sidebar-header {
+      min-height: 64px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+    .media-sidebar-header h2 { margin: 0; font-size: 16px; }
+    #closeMedia {
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 20px;
+    }
+    #mediaGallery {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-content: start;
+      gap: 10px;
+    }
+    .media-card {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg);
+      cursor: pointer;
+    }
+    .media-card:hover { border-color: var(--accent); }
+    .media-card img, .media-card video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .media-card .media-type {
+      position: absolute;
+      left: 6px;
+      bottom: 6px;
+      padding: 3px 6px;
+      border-radius: 5px;
+      color: #fff;
+      background: rgba(2, 16, 24, 0.76);
+      font-size: 10px;
+      pointer-events: none;
+    }
+    #emptyGallery {
+      grid-column: 1 / -1;
+      color: var(--muted);
+      text-align: center;
+      font-size: 13px;
+      line-height: 1.5;
+      padding: 36px 12px;
+    }
+    #mediaBackdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 19;
+      display: none;
+      background: rgba(0, 0, 0, 0.35);
+    }
+    #mediaBackdrop.open { display: block; }
   </style>
 </head>
 <body>
@@ -250,6 +341,7 @@
       <h1>QwenHub</h1>
     </div>
     <div class="header-actions">
+      <button id="mediaBtn" data-i18n-title="mediaLibrary" title="Media library">Media</button>
       <button id="langBtn" title="Switch language">IT</button>
       <button id="settingsBtn" title="Settings">⚙</button>
       <span id="modeBadge">web</span>
@@ -271,6 +363,17 @@
   </section>
 
   <input type="file" id="fileInput" accept="image/*,video/*" style="display:none" />
+
+  <div id="mediaBackdrop"></div>
+  <aside id="mediaSidebar" aria-hidden="true">
+    <div class="media-sidebar-header">
+      <h2 data-i18n="mediaLibrary">Media library</h2>
+      <button id="closeMedia" title="Close">×</button>
+    </div>
+    <div id="mediaGallery">
+      <div id="emptyGallery" data-i18n="emptyGallery">Generated images and videos will appear here.</div>
+    </div>
+  </aside>
 
   <div id="settingsModal" class="modal" style="display:none">
     <div class="modal-content">
@@ -375,6 +478,10 @@
         attachedVideo: "video attached",
         rateLimitError: "Rate limit hit by the free model provider. Wait a few seconds and try again, or switch to a non-free / local model in Settings.",
         providerError: "The model provider is temporarily unavailable. Wait a moment and retry, or switch model/provider in Settings.",
+        mediaLibrary: "Media library",
+        emptyGallery: "Generated images and videos will appear here.",
+        image: "Image",
+        video: "Video",
       },
       it: {
         placeholder: "Descrivi la scena… (es. una foto cinematografica 16:9 di una donna alla golden hour)",
@@ -411,6 +518,10 @@
         attachedVideo: "video allegato",
         rateLimitError: "Rate limit raggiunto dal provider del modello gratuito. Aspetta qualche secondo e riprova, oppure passa a un modello a pagamento o locale nelle Impostazioni.",
         providerError: "Il provider del modello è temporaneamente non disponibile. Aspetta un momento e riprova, oppure cambia modello/provider nelle Impostazioni.",
+        mediaLibrary: "Libreria media",
+        emptyGallery: "Le immagini e i video generati appariranno qui.",
+        image: "Immagine",
+        video: "Video",
       }
     };
 
@@ -429,6 +540,7 @@
     document.getElementById('langBtn').onclick = () => {
       currentLang = currentLang === 'en' ? 'it' : 'en';
       applyLang();
+      renderMediaGallery();
     };
 
     applyLang();
@@ -445,6 +557,74 @@
     let attached = { type: null, b64: null, url: null };
     let lastOutputUrl = null;
     let settings = {};
+    let generatedMedia = [];
+    try {
+      generatedMedia = JSON.parse(localStorage.getItem('qwenhub.generatedMedia') || '[]');
+      if (!Array.isArray(generatedMedia)) generatedMedia = [];
+    } catch (_) {
+      generatedMedia = [];
+    }
+
+    const mediaBtn = document.getElementById('mediaBtn');
+    const mediaSidebar = document.getElementById('mediaSidebar');
+    const mediaBackdrop = document.getElementById('mediaBackdrop');
+    const closeMedia = document.getElementById('closeMedia');
+    const mediaGallery = document.getElementById('mediaGallery');
+
+    function setMediaSidebar(open) {
+      mediaSidebar.classList.toggle('open', open);
+      mediaBackdrop.classList.toggle('open', open);
+      mediaBtn.classList.toggle('active', open);
+      mediaSidebar.setAttribute('aria-hidden', String(!open));
+    }
+
+    function renderMediaGallery() {
+      mediaBtn.textContent = generatedMedia.length ? `Media ${generatedMedia.length}` : 'Media';
+      mediaGallery.innerHTML = '';
+      if (!generatedMedia.length) {
+        const empty = document.createElement('div');
+        empty.id = 'emptyGallery';
+        empty.textContent = t('emptyGallery');
+        mediaGallery.appendChild(empty);
+        return;
+      }
+
+      for (const item of generatedMedia) {
+        const card = document.createElement('div');
+        card.className = 'media-card';
+        card.title = t('clickResult');
+        const el = document.createElement(item.type === 'video' ? 'video' : 'img');
+        el.src = item.url;
+        if (item.type === 'video') {
+          el.muted = true;
+          el.playsInline = true;
+          el.preload = 'metadata';
+        }
+        const label = document.createElement('span');
+        label.className = 'media-type';
+        label.textContent = t(item.type);
+        card.appendChild(el);
+        card.appendChild(label);
+        card.onclick = async () => {
+          await useAsReference(item.url, item.type);
+          setMediaSidebar(false);
+        };
+        mediaGallery.appendChild(card);
+      }
+    }
+
+    function addGeneratedMedia(url) {
+      if (!url || generatedMedia.some(item => item.url === url)) return;
+      const type = /\.(mp4|webm|mov)(\?|$)/i.test(url) ? 'video' : 'image';
+      generatedMedia.unshift({ url, type });
+      localStorage.setItem('qwenhub.generatedMedia', JSON.stringify(generatedMedia));
+      renderMediaGallery();
+    }
+
+    renderMediaGallery();
+    mediaBtn.onclick = () => setMediaSidebar(!mediaSidebar.classList.contains('open'));
+    closeMedia.onclick = () => setMediaSidebar(false);
+    mediaBackdrop.onclick = () => setMediaSidebar(false);
 
     const settingsModal = document.getElementById('settingsModal');
     const settingsBtn = document.getElementById('settingsBtn');
@@ -657,7 +837,10 @@
         } else {
           messages.push({ role: 'assistant', content: data.message || '' });
           appendBubble('bot', escapeHtml(data.message || 'Done.'), data.media_url);
-          if (data.media_url) lastOutputUrl = data.media_url;
+          if (data.media_url) {
+            lastOutputUrl = data.media_url;
+            addGeneratedMedia(data.media_url);
+          }
         }
       } catch (err) {
         appendBubble('bot', '⚠️ ' + escapeHtml(err.message));

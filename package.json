@@ -45,5 +45,8 @@
       "icon": "img/icon.png",
       "target": ["AppImage", "deb"]
     }
+  },
+  "allowScripts": {
+    "electron@32.3.3": true
   }
 }

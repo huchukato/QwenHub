@@ -243,7 +243,7 @@ Rules:
    - Otherwise pick a t2v capability (minimax-h3-t2v, kling-o3-t2v, ltx-t2v, veo-t2v, etc.).
 3. The 'capability' value MUST be one of the exact names in the AVAILABLE CAPABILITIES list below. Never invent a capability name.
 4. Prompt must be English, shot-native, concise but complete: camera movement/framing, subject action, lighting/atmosphere. For still images: detailed realistic description with subject, setting, style, and light.
-5. Duration: default 5s for video. Use 2-3s for seamless loops. Max 10s unless user asks more.
+5. For images, do NOT set duration. Duration only applies to video. Default 5s for video. Use shorter (2-3s) for seamless loops. Max 10s unless user asks more.
 6. Aspect ratio: default 16:9. Use 9:16 for vertical, 1:1 for square if requested.
 7. If user refines previous output ("make it faster", "orbit camera", "pan left"), keep the same subject/style and change only what they asked. Set use_reference=true if a reference is available.
 8. Do NOT describe the attached image yourself; the Livepeer model sees the reference. Only provide the action/camera/motion instruction.
@@ -393,15 +393,16 @@ ipcMain.handle('chat', async (_event, { messages, imageB64, videoB64, lastOutput
       }
     }
 
+    const genOptions = { imageUrl, aspectRatio: action.aspect_ratio };
+    if (action.mode === 'video') {
+      genOptions.duration = action.duration;
+    }
+
     const { filename, report } = await generateMedia(
       action.capability,
       action.prompt,
       appSettings.livepeer_api_key || '',
-      {
-        imageUrl,
-        duration: action.duration,
-        aspectRatio: action.aspect_ratio,
-      },
+      genOptions,
     );
 
     return {

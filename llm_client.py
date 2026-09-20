@@ -29,7 +29,7 @@ Rules:
    - subject action and pacing
    - lighting and atmosphere
    For still images: detailed realistic description with style, subject, setting, light.
-4. Duration: default 5s for video. Use shorter (2-3s) for seamless loops. Max 10s unless user asks more.
+4. For images, do NOT set duration. Duration only applies to video. Default 5s for video. Use shorter (2-3s) for seamless loops. Max 10s unless user asks more.
 5. Aspect ratio: default 16:9. Use 9:16 for vertical, 1:1 for square if requested.
 6. If the user refines a previous output ("make it faster", "orbit camera", "pan left"), keep the same subject/style and only change what they asked. Set use_reference=true if a reference image/URL is available.
 7. Do NOT describe the attached image yourself in the prompt; the Livepeer model sees the reference image. Only provide the action/camera/motion instruction.

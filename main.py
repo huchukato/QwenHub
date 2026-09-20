@@ -171,7 +171,7 @@ async def chat(payload: dict[str, Any]):
             prompt=prompt,
             api_key=LIVEPEER_API_KEY,
             image_url=image_url,
-            duration=duration,
+            duration=duration if mode == "video" else None,
             aspect_ratio=aspect_ratio,
         )
     except Exception as exc:

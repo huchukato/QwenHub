@@ -214,6 +214,13 @@
     }
     .modal-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
     .settings-note { font-size: 11px; color: var(--muted); margin: 0; }
+    .model-link {
+      font-size: 12px;
+      color: var(--accent);
+      text-decoration: none;
+      margin-top: -4px;
+    }
+    .model-link:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -256,7 +263,18 @@
       <label data-i18n="apiKeyLabel">LLM API key</label>
       <input type="password" id="settingsApiKey" data-i18n-placeholder="apiKeyPlaceholder" placeholder="sk-..." />
       <label data-i18n="modelLabel">Model</label>
-      <input type="text" id="settingsModel" data-i18n-placeholder="modelPlaceholder" placeholder="qwen/qwen-2.5-7b-instruct" />
+      <input type="text" id="settingsModel" list="modelSuggestions" data-i18n-placeholder="modelPlaceholder" placeholder="qwen/qwen-2.5-7b-instruct" />
+      <datalist id="modelSuggestions">
+        <option value="qwen/qwen-2.5-7b-instruct"></option>
+        <option value="qwen/qwen-2.5-72b-instruct"></option>
+        <option value="qwen/qwen-3-8b"></option>
+        <option value="openai/gpt-4o-mini"></option>
+        <option value="anthropic/claude-3.5-sonnet"></option>
+        <option value="google/gemini-flash-1.5"></option>
+        <option value="meta-llama/llama-3.1-8b-instruct"></option>
+        <option value="mistralai/mistral-7b-instruct"></option>
+      </datalist>
+      <a class="model-link" href="https://openrouter.ai/models" target="_blank" data-i18n="browseModels">Browse OpenRouter models</a>
       <label data-i18n="livepeerKeyLabel">Livepeer API key (optional)</label>
       <input type="password" id="settingsLivepeerKey" data-i18n-placeholder="livepeerKeyPlaceholder" placeholder="leave empty for demo mode" />
       <div class="modal-actions">
@@ -281,6 +299,7 @@
         apiKeyPlaceholder: "sk-...",
         modelLabel: "Model",
         modelPlaceholder: "qwen/qwen-2.5-7b-instruct",
+        browseModels: "Browse OpenRouter models",
         livepeerKeyLabel: "Livepeer API key (optional)",
         livepeerKeyPlaceholder: "leave empty for demo mode",
         save: "Save",
@@ -306,6 +325,7 @@
         apiKeyPlaceholder: "sk-...",
         modelLabel: "Modello",
         modelPlaceholder: "qwen/qwen-2.5-7b-instruct",
+        browseModels: "Sfoglia i modelli OpenRouter",
         livepeerKeyLabel: "API key Livepeer (opzionale)",
         livepeerKeyPlaceholder: "lascia vuoto per la modalità demo",
         save: "Salva",

@@ -50,6 +50,11 @@ function createWindow() {
     },
   });
   mainWindow.loadFile(path.join(__dirname, '..', 'static', 'index.html'));
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    require('electron').shell.openExternal(url);
+    return { action: 'deny' };
+  });
 }
 
 app.whenReady().then(createWindow);

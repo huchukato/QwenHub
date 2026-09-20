@@ -59,7 +59,7 @@ def _resolve_capability(raw_name: str, mode: str, caps: list[dict]) -> str | Non
             return best[0]["name"]
 
     if mode == "image":
-        fallback = next((c for c in caps if re.search(r"flux|image|schnell|dev|pro", c.get("name", ""), re.I)), None)
+        fallback = next((c for c in caps if re.search(r"flux|image|krea|schnell|dev|pro", c.get("name", ""), re.I)), None)
     else:
         fallback = next(
             (c for c in caps if re.search(r"i2v|t2v|video|minimax|kling|ltx|veo|seedance|wan", c.get("name", ""), re.I)),

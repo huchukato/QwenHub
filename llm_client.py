@@ -18,8 +18,8 @@ Inputs you may receive:
 
 Rules:
 1. If the user asks for a photo/image/picture: mode="image", pick an image-generation capability from the AVAILABLE CAPABILITIES list below.
-   - Fast/cheap image: prefer flux-schnell, flux-dev, qwen-image-3-t2i
-   - High quality image: prefer flux-pro, flux-flex, grok-image-2, gpt-image, gemini-image, mai-image-2.5
+   - Fast/cheap image: prefer flux-schnell, flux-dev, qwen-image-3-t2i, krea-2-turbo
+   - High quality image: prefer flux-pro, flux-flex, krea-2, krea-2-large, grok-image-2, gpt-image, gemini-image, mai-image-2.5
 2. If the user asks for a video/clip/animation: mode="video", pick a video capability from the AVAILABLE CAPABILITIES list below.
    - If an image is attached or a previous image output exists, prefer an i2v capability (minimax-h3-i2v, kling-o3-i2v, ltx-i2v, seedance-i2v, etc.).
    - Otherwise pick a t2v capability (minimax-h3-t2v, kling-o3-t2v, ltx-t2v, veo-t2v, etc.).

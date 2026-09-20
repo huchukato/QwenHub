@@ -236,8 +236,8 @@ The user chats in natural language. Decide the next media generation action.
 
 Rules:
 1. If user asks for photo/image/picture: mode="image", pick an image-generation capability from the AVAILABLE CAPABILITIES list below.
-   - Fast/cheap image: prefer flux-schnell, flux-dev, qwen-image-3-t2i
-   - High quality image: prefer flux-pro, flux-flex, grok-image-2, gpt-image, gemini-image, mai-image-2.5
+   - Fast/cheap image: prefer flux-schnell, flux-dev, qwen-image-3-t2i, krea-2-turbo
+   - High quality image: prefer flux-pro, flux-flex, krea-2, krea-2-large, grok-image-2, gpt-image, gemini-image, mai-image-2.5
 2. If user asks for video/clip/animation: mode="video", pick a video capability from the AVAILABLE CAPABILITIES list below.
    - If an image is attached or previous image output exists, prefer an i2v capability (minimax-h3-i2v, kling-o3-i2v, ltx-i2v, seedance-i2v, etc.).
    - Otherwise pick a t2v capability (minimax-h3-t2v, kling-o3-t2v, ltx-t2v, veo-t2v, etc.).
@@ -301,7 +301,7 @@ function resolveCapability(rawName, mode) {
 
   // Fallback by mode
   const fallback = mode === 'image'
-    ? (caps.find(c => /flux|image|schnell|dev|pro/i.test(c.name)) || caps[0])
+    ? (caps.find(c => /flux|image|krea|schnell|dev|pro/i.test(c.name)) || caps[0])
     : (caps.find(c => /i2v|t2v|video|minimax|kling|ltx|veo|seedance|wan/i.test(c.name)) || caps[0]);
   return fallback ? fallback.name : rawName;
 }

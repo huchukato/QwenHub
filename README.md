@@ -79,7 +79,7 @@ docker run -p 8000:8000 --env-file .env qwenhub
 |---|---|---|
 | `OPENAI_BASE_URL` | `https://openrouter.ai/api/v1` | LLM API base URL |
 | `OPENAI_API_KEY` | *(required)* | LLM API key |
-| `MODEL` | `qwen/qwen-2.5-7b-instruct:free` | Chat model |
+| `MODEL` | `qwen/qwen3.8-27b:free` | Chat model |
 | `LIVEPEER_API_KEY` | *(empty)* | Optional Livepeer key (demo mode works without it) |
 
 ### 💰 Free models on OpenRouter

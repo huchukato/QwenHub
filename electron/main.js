@@ -8,8 +8,33 @@ const OpenAI = require('openai');
 
 const MCP_ENDPOINT = 'https://agent.livepeer.org/api/mcp/raw';
 const OUTPUT_DIR = path.join(app.getPath('userData'), 'outputs');
+const SETTINGS_PATH = path.join(app.getPath('userData'), 'settings.json');
 if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
+const DEFAULT_SETTINGS = {
+  openai_base_url: process.env.OPENAI_BASE_URL || 'https://openrouter.ai/api/v1',
+  openai_api_key: process.env.OPENAI_API_KEY || '',
+  model: process.env.MODEL || 'qwen/qwen-2.5-7b-instruct',
+  livepeer_api_key: process.env.LIVEPEER_API_KEY || '',
+};
+
+function loadSettings() {
+  try {
+    if (fs.existsSync(SETTINGS_PATH)) {
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8')) };
+    }
+  } catch (e) {
+    console.error('[QwenHub] failed to load settings:', e);
+  }
+  return { ...DEFAULT_SETTINGS };
+}
+
+function saveSettings(settings) {
+  fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+  appSettings = { ...settings };
+}
+
+let appSettings = loadSettings();
 let mainWindow;
 const ICON_PNG = path.join(__dirname, '..', 'img', 'icon.png');
 
@@ -179,13 +204,13 @@ async function generateMedia(capability, prompt, apiKey, { imageUrl, duration, a
 
 function getOpenAI() {
   return new OpenAI({
-    baseURL: process.env.OPENAI_BASE_URL || 'https://openrouter.ai/api/v1',
-    apiKey: process.env.OPENAI_API_KEY || '',
+    baseURL: appSettings.openai_base_url,
+    apiKey: appSettings.openai_api_key,
   });
 }
 
 function defaultModel() {
-  return process.env.MODEL || 'qwen/qwen-2.5-7b-instruct';
+  return appSettings.model;
 }
 
 function stripFences(text) {
@@ -215,9 +240,19 @@ If just chatting, set action to null.`;
 
 let cachedCapabilities = [];
 
+ipcMain.handle('getSettings', async () => {
+  return { ...appSettings };
+});
+
+ipcMain.handle('saveSettings', async (_event, settings) => {
+  saveSettings(settings);
+  cachedCapabilities = []; // refresh capabilities cache on key change
+  return { ...appSettings };
+});
+
 ipcMain.handle('capabilities', async () => {
   if (!cachedCapabilities.length) {
-    cachedCapabilities = await listCapabilities(process.env.LIVEPEER_API_KEY || '');
+    cachedCapabilities = await listCapabilities(appSettings.livepeer_api_key || '');
   }
   return cachedCapabilities;
 });
@@ -234,7 +269,7 @@ ipcMain.handle('chat', async (_event, { messages, imageB64, videoB64, lastOutput
   let referenceImageUrl = null;
 
   if (imageB64) {
-    referenceImageUrl = await uploadFile(imageB64, 'reference.jpg', process.env.LIVEPEER_API_KEY || '');
+    referenceImageUrl = await uploadFile(imageB64, 'reference.jpg', appSettings.livepeer_api_key || '');
     userContent.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageB64}` } });
   }
   if (videoB64) {
@@ -274,18 +309,18 @@ ipcMain.handle('chat', async (_event, { messages, imageB64, videoB64, lastOutput
         const localPath = lastOutputUrl.replace(/^file:\/\//, '');
         blob = fs.readFileSync(localPath);
       } else {
-        const headers = process.env.LIVEPEER_API_KEY ? { Authorization: `Bearer ${process.env.LIVEPEER_API_KEY}` } : {};
+        const headers = appSettings.livepeer_api_key ? { Authorization: `Bearer ${appSettings.livepeer_api_key}` } : {};
         blob = await httpGet(lastOutputUrl, headers);
       }
       const ext = path.extname(lastOutputUrl.replace(/^file:\/\//, '')) || '.bin';
-      imageUrl = await uploadFile(blob.toString('base64'), `reference${ext}`, process.env.LIVEPEER_API_KEY || '');
+      imageUrl = await uploadFile(blob.toString('base64'), `reference${ext}`, appSettings.livepeer_api_key || '');
     }
   }
 
   const { filename, report } = await generateMedia(
     action.capability,
     action.prompt,
-    process.env.LIVEPEER_API_KEY || '',
+    appSettings.livepeer_api_key || '',
     {
       imageUrl,
       duration: action.duration,

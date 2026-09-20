@@ -145,12 +145,76 @@
       font-size: 13px;
     }
     .hint { color: var(--muted); font-size: 12px; text-align: center; }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+    #logo { width: 32px; height: 32px; border-radius: 8px; }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    #settingsBtn {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      font-size: 16px;
+      line-height: 1;
+      border-radius: 8px;
+    }
+    #settingsBtn:hover { color: var(--text); border-color: var(--accent); }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal-content {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      width: min(440px, 90vw);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; }
+    .modal-header h2 { margin: 0; font-size: 16px; }
+    #closeSettings {
+      background: transparent;
+      color: var(--muted);
+      border: none;
+      font-size: 20px;
+      padding: 0;
+    }
+    .modal-content label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+    .modal-content input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 10px;
+      font-size: 13px;
+    }
+    .modal-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
+    .settings-note { font-size: 11px; color: var(--muted); margin: 0; }
   </style>
 </head>
 <body>
   <header>
-    <h1>QwenHub</h1>
-    <span id="modeBadge">web</span>
+    <div class="brand">
+      <img id="logo" src="icon.png" alt="QwenHub" />
+      <h1>QwenHub</h1>
+    </div>
+    <div class="header-actions">
+      <button id="settingsBtn" title="Settings">⚙</button>
+      <span id="modeBadge">web</span>
+    </div>
   </header>
 
   <main id="chat"></main>
@@ -169,6 +233,27 @@
 
   <input type="file" id="fileInput" accept="image/*,video/*" style="display:none" />
 
+  <div id="settingsModal" class="modal" style="display:none">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button id="closeSettings">×</button>
+      </div>
+      <label>LLM base URL</label>
+      <input type="text" id="settingsBaseUrl" placeholder="https://openrouter.ai/api/v1" />
+      <label>LLM API key</label>
+      <input type="password" id="settingsApiKey" placeholder="sk-..." />
+      <label>Model</label>
+      <input type="text" id="settingsModel" placeholder="qwen/qwen-2.5-7b-instruct" />
+      <label>Livepeer API key (optional)</label>
+      <input type="password" id="settingsLivepeerKey" placeholder="leave empty for demo mode" />
+      <div class="modal-actions">
+        <button id="saveSettings">Save</button>
+      </div>
+      <p class="settings-note" id="settingsNote"></p>
+    </div>
+  </div>
+
   <script>
     const api = typeof window !== 'undefined' && window.electronAPI ? window.electronAPI : null;
     document.getElementById('modeBadge').textContent = api ? 'desktop' : 'web';
@@ -184,6 +269,54 @@
     let messages = [];
     let attached = { type: null, b64: null, url: null };
     let lastOutputUrl = null;
+    let settings = {};
+
+    const settingsModal = document.getElementById('settingsModal');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const closeSettings = document.getElementById('closeSettings');
+    const saveSettingsBtn = document.getElementById('saveSettings');
+    const settingsBaseUrl = document.getElementById('settingsBaseUrl');
+    const settingsApiKey = document.getElementById('settingsApiKey');
+    const settingsModel = document.getElementById('settingsModel');
+    const settingsLivepeerKey = document.getElementById('settingsLivepeerKey');
+    const settingsNote = document.getElementById('settingsNote');
+
+    async function openSettings() {
+      if (api) {
+        settings = await api.getSettings();
+        settingsNote.textContent = 'Settings are saved locally in the app.';
+      } else {
+        settingsNote.textContent = 'Settings are managed by the server in web mode.';
+        settingsBtn.disabled = true;
+        return;
+      }
+      settingsBaseUrl.value = settings.openai_base_url || '';
+      settingsApiKey.value = settings.openai_api_key || '';
+      settingsModel.value = settings.model || '';
+      settingsLivepeerKey.value = settings.livepeer_api_key || '';
+      settingsModal.style.display = 'flex';
+    }
+
+    function hideSettings() {
+      settingsModal.style.display = 'none';
+    }
+
+    async function saveSettings() {
+      if (!api) return;
+      const updated = {
+        openai_base_url: settingsBaseUrl.value.trim(),
+        openai_api_key: settingsApiKey.value.trim(),
+        model: settingsModel.value.trim(),
+        livepeer_api_key: settingsLivepeerKey.value.trim(),
+      };
+      settings = await api.saveSettings(updated);
+      settingsModal.style.display = 'none';
+    }
+
+    settingsBtn.onclick = openSettings;
+    closeSettings.onclick = hideSettings;
+    saveSettingsBtn.onclick = saveSettings;
+    settingsModal.onclick = (e) => { if (e.target === settingsModal) hideSettings(); };
 
     function appendBubble(role, html, mediaUrl = null) {
       const div = document.createElement('div');

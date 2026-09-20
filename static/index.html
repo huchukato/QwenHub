@@ -333,6 +333,7 @@
         spinner: "Qwen is directing Livepeer…",
         attachedImage: "image attached",
         attachedVideo: "video attached",
+        rateLimitError: "Rate limit hit by the free model provider. Wait a few seconds and try again, or switch to a non-free / local model in Settings.",
       },
       it: {
         placeholder: "Descrivi la scena… (es. una foto cinematografica 16:9 di una donna alla golden hour)",
@@ -361,6 +362,7 @@
         spinner: "Qwen sta dirigendo Livepeer…",
         attachedImage: "immagine allegata",
         attachedVideo: "video allegato",
+        rateLimitError: "Rate limit raggiunto dal provider del modello gratuito. Aspetta qualche secondo e riprova, oppure passa a un modello a pagamento o locale nelle Impostazioni.",
       }
     };
 
@@ -557,9 +559,14 @@
           if (!res.ok) throw new Error(data.detail || 'Server error');
         }
 
-        messages.push({ role: 'assistant', content: data.message || '' });
-        appendBubble('bot', escapeHtml(data.message || 'Done.'), data.media_url);
-        if (data.media_url) lastOutputUrl = data.media_url;
+        if (data.error) {
+          const errorMsg = data.error === 'rate_limit' ? t('rateLimitError') : (data.message || 'Something went wrong.');
+          appendBubble('bot', '⚠️ ' + escapeHtml(errorMsg));
+        } else {
+          messages.push({ role: 'assistant', content: data.message || '' });
+          appendBubble('bot', escapeHtml(data.message || 'Done.'), data.media_url);
+          if (data.media_url) lastOutputUrl = data.media_url;
+        }
       } catch (err) {
         appendBubble('bot', '⚠️ ' + escapeHtml(err.message));
       } finally {

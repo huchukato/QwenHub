@@ -270,76 +270,88 @@ ipcMain.handle('loadFile', async (_event, filePath) => {
 });
 
 ipcMain.handle('chat', async (_event, { messages, imageB64, videoB64, lastOutputUrl }) => {
-  const caps = await getCapabilities();
-
-  let userContent = [{ type: 'text', text: messages[messages.length - 1]?.content || '' }];
-  let referenceImageUrl = null;
-
-  if (imageB64) {
-    referenceImageUrl = await uploadFile(imageB64, 'reference.jpg', appSettings.livepeer_api_key || '');
-    userContent.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageB64}` } });
-  }
-  if (videoB64) {
-    userContent.push({ type: 'text', text: '[A video clip is attached for review/refinement context.]' });
-  }
-  messages[messages.length - 1].content = userContent;
-
-  const capBlock = JSON.stringify(caps.slice(0, 120), null, 2);
-  let system = SYSTEM_PROMPT + '\n\nAVAILABLE CAPABILITIES:\n' + capBlock;
-  if (lastOutputUrl) system += '\n\nLAST_GENERATED_OUTPUT_URL: ' + lastOutputUrl;
-
-  const openai = getOpenAI();
-  const completion = await openai.chat.completions.create({
-    model: defaultModel(),
-    messages: [{ role: 'system', content: system }, ...messages],
-    temperature: 0.6,
-    max_tokens: 2048,
-  });
-
-  const raw = stripFences(completion.choices[0].message.content || '{}');
-  let data;
   try {
-    data = JSON.parse(raw);
-  } catch (e) {
-    throw new Error(`LLM did not return valid JSON: ${e.message}\nRaw: ${raw}`);
-  }
+    const caps = await getCapabilities();
 
-  const action = data.action;
-  if (!action) return { message: data.message || '', action: null };
+    let userContent = [{ type: 'text', text: messages[messages.length - 1]?.content || '' }];
+    let referenceImageUrl = null;
 
-  let imageUrl = null;
-  if (action.use_reference) {
-    if (referenceImageUrl) imageUrl = referenceImageUrl;
-    else if (lastOutputUrl) {
-      let blob;
-      if (lastOutputUrl.startsWith('file://')) {
-        const localPath = lastOutputUrl.replace(/^file:\/\//, '');
-        blob = fs.readFileSync(localPath);
-      } else {
-        const headers = appSettings.livepeer_api_key ? { Authorization: `Bearer ${appSettings.livepeer_api_key}` } : {};
-        blob = await httpGet(lastOutputUrl, headers);
-      }
-      const ext = path.extname(lastOutputUrl.replace(/^file:\/\//, '')) || '.bin';
-      imageUrl = await uploadFile(blob.toString('base64'), `reference${ext}`, appSettings.livepeer_api_key || '');
+    if (imageB64) {
+      referenceImageUrl = await uploadFile(imageB64, 'reference.jpg', appSettings.livepeer_api_key || '');
+      userContent.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageB64}` } });
     }
+    if (videoB64) {
+      userContent.push({ type: 'text', text: '[A video clip is attached for review/refinement context.]' });
+    }
+    messages[messages.length - 1].content = userContent;
+
+    const capBlock = JSON.stringify(caps.slice(0, 120), null, 2);
+    let system = SYSTEM_PROMPT + '\n\nAVAILABLE CAPABILITIES:\n' + capBlock;
+    if (lastOutputUrl) system += '\n\nLAST_GENERATED_OUTPUT_URL: ' + lastOutputUrl;
+
+    const openai = getOpenAI();
+    const completion = await openai.chat.completions.create({
+      model: defaultModel(),
+      messages: [{ role: 'system', content: system }, ...messages],
+      temperature: 0.6,
+      max_tokens: 2048,
+    });
+
+    const raw = stripFences(completion.choices[0].message.content || '{}');
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch (e) {
+      throw new Error(`LLM did not return valid JSON: ${e.message}\nRaw: ${raw}`);
+    }
+
+    const action = data.action;
+    if (!action) return { message: data.message || '', action: null };
+
+    let imageUrl = null;
+    if (action.use_reference) {
+      if (referenceImageUrl) imageUrl = referenceImageUrl;
+      else if (lastOutputUrl) {
+        let blob;
+        if (lastOutputUrl.startsWith('file://')) {
+          const localPath = lastOutputUrl.replace(/^file:\/\//, '');
+          blob = fs.readFileSync(localPath);
+        } else {
+          const headers = appSettings.livepeer_api_key ? { Authorization: `Bearer ${appSettings.livepeer_api_key}` } : {};
+          blob = await httpGet(lastOutputUrl, headers);
+        }
+        const ext = path.extname(lastOutputUrl.replace(/^file:\/\//, '')) || '.bin';
+        imageUrl = await uploadFile(blob.toString('base64'), `reference${ext}`, appSettings.livepeer_api_key || '');
+      }
+    }
+
+    const { filename, report } = await generateMedia(
+      action.capability,
+      action.prompt,
+      appSettings.livepeer_api_key || '',
+      {
+        imageUrl,
+        duration: action.duration,
+        aspectRatio: action.aspect_ratio,
+      },
+    );
+
+    return {
+      message: data.message || '',
+      action,
+      mediaUrl: `file://${path.join(OUTPUT_DIR, filename)}`,
+      mode: action.mode,
+      report,
+    };
+  } catch (err) {
+    const status = err.status || (err.response && err.response.status);
+    const is429 = status === 429 || /429|rate.limit|too many requests/i.test(err.message);
+    if (is429) {
+      return {
+        error: 'rate_limit',
+        message: 'Rate limit hit by the free model provider. Wait a few seconds and try again, or switch to a non-free / local model in Settings.',
+      };
+    }
+    throw err;
   }
-
-  const { filename, report } = await generateMedia(
-    action.capability,
-    action.prompt,
-    appSettings.livepeer_api_key || '',
-    {
-      imageUrl,
-      duration: action.duration,
-      aspectRatio: action.aspect_ratio,
-    },
-  );
-
-  return {
-    message: data.message || '',
-    action,
-    mediaUrl: `file://${path.join(OUTPUT_DIR, filename)}`,
-    mode: action.mode,
-    report,
-  };
 });

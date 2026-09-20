@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -57,7 +57,16 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  protocol.handle('qwenhub', (request) => {
+    const url = new URL(request.url);
+    let pathname = decodeURIComponent(url.pathname);
+    if (pathname.startsWith('/')) pathname = pathname.slice(1);
+    const filePath = path.join(OUTPUT_DIR, pathname);
+    return net.fetch('file://' + filePath);
+  });
+  createWindow();
+});
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 
@@ -304,6 +313,23 @@ ipcMain.handle('loadFile', async (_event, filePath) => {
   return fs.readFileSync(clean).toString('base64');
 });
 
+ipcMain.handle('loadMediaUrl', async (_event, url) => {
+  let blob;
+  if (url.startsWith('qwenhub://output/')) {
+    const filePath = path.join(OUTPUT_DIR, url.replace(/^qwenhub:\/\/output\//, ''));
+    blob = fs.readFileSync(filePath);
+  } else if (url.startsWith('file://')) {
+    const filePath = url.replace(/^file:\/\//, '');
+    blob = fs.readFileSync(filePath);
+  } else if (/^https?:\/\//i.test(url)) {
+    const headers = appSettings.livepeer_api_key ? { Authorization: `Bearer ${appSettings.livepeer_api_key}` } : {};
+    blob = await httpGet(url, headers);
+  } else {
+    blob = fs.readFileSync(url);
+  }
+  return blob.toString('base64');
+});
+
 ipcMain.handle('chat', async (_event, { messages, imageB64, videoB64, lastOutputUrl }) => {
   try {
     const caps = await getCapabilities();
@@ -351,14 +377,18 @@ ipcMain.handle('chat', async (_event, { messages, imageB64, videoB64, lastOutput
       if (referenceImageUrl) imageUrl = referenceImageUrl;
       else if (lastOutputUrl) {
         let blob;
-        if (lastOutputUrl.startsWith('file://')) {
-          const localPath = lastOutputUrl.replace(/^file:\/\//, '');
+        let localPath = null;
+        if (lastOutputUrl.startsWith('qwenhub://output/')) {
+          localPath = path.join(OUTPUT_DIR, lastOutputUrl.replace(/^qwenhub:\/\/output\//, ''));
+          blob = fs.readFileSync(localPath);
+        } else if (lastOutputUrl.startsWith('file://')) {
+          localPath = lastOutputUrl.replace(/^file:\/\//, '');
           blob = fs.readFileSync(localPath);
         } else {
           const headers = appSettings.livepeer_api_key ? { Authorization: `Bearer ${appSettings.livepeer_api_key}` } : {};
           blob = await httpGet(lastOutputUrl, headers);
         }
-        const ext = path.extname(lastOutputUrl.replace(/^file:\/\//, '')) || '.bin';
+        const ext = path.extname(localPath || lastOutputUrl) || '.bin';
         imageUrl = await uploadFile(blob.toString('base64'), `reference${ext}`, appSettings.livepeer_api_key || '');
       }
     }
@@ -377,7 +407,7 @@ ipcMain.handle('chat', async (_event, { messages, imageB64, videoB64, lastOutput
     return {
       message: data.message || '',
       action,
-      mediaUrl: `file://${path.join(OUTPUT_DIR, filename)}`,
+      mediaUrl: `qwenhub://output/${filename}`,
       mode: action.mode,
       report,
     };

@@ -524,6 +524,13 @@
         el.src = mediaUrl;
         if (isVideo) { el.controls = true; el.playsInline = true; }
         el.onclick = () => useAsReference(mediaUrl, isVideo ? 'video' : 'image');
+        el.onerror = () => {
+          el.style.display = 'none';
+          const err = document.createElement('div');
+          err.className = 'hint';
+          err.textContent = (api ? 'Failed to load preview. Path: ' : 'Preview not available in web mode. File: ') + mediaUrl;
+          div.appendChild(err);
+        };
         div.appendChild(el);
         const hint = document.createElement('div');
         hint.className = 'hint';
@@ -536,8 +543,10 @@
 
     async function useAsReference(url, type) {
       let b64;
-      if (api && url.startsWith('file://')) {
-        b64 = await api.loadFile(url);
+      if (api && (url.startsWith('file://') || url.startsWith('qwenhub://'))) {
+        b64 = await api.loadMediaUrl(url);
+      } else if (api && /^https?:\/\//i.test(url)) {
+        b64 = await api.loadMediaUrl(url);
       } else {
         const blob = await fetch(url).then(r => r.blob());
         b64 = await new Promise((resolve, reject) => {

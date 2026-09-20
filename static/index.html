@@ -108,6 +108,20 @@
       cursor: pointer;
     }
     .row { display: flex; gap: 10px; align-items: stretch; }
+    #genSelectors { align-items: center; }
+    .gen-label { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    #genMode, #genCap {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 0 10px;
+      font-size: 13px;
+      height: 36px;
+      max-width: 240px;
+    }
+    #genCap { flex: 1; }
+    #genMode option, #genCap option { background: var(--panel); color: var(--text); }
     textarea {
       flex: 1;
       resize: none;
@@ -354,6 +368,15 @@
 
   <section id="composer">
     <div id="preview"></div>
+    <div class="row" id="genSelectors">
+      <label class="gen-label" data-i18n="genLabel">Generate:</label>
+      <select id="genMode">
+        <option value="auto" data-i18n="genAuto">Auto</option>
+        <option value="image" data-i18n="genImage">Image</option>
+        <option value="video" data-i18n="genVideo">Video</option>
+      </select>
+      <select id="genCap"></select>
+    </div>
     <div class="row">
       <button id="attachBtn" data-i18n-title="attachTooltip" title="Attach image/video">+</button>
       <textarea id="input" data-i18n-placeholder="placeholder" placeholder="Describe the shot…"></textarea>
@@ -482,6 +505,11 @@
         emptyGallery: "Generated images and videos will appear here.",
         image: "Image",
         video: "Video",
+        genLabel: "Generate:",
+        genAuto: "Auto",
+        genImage: "Image",
+        genVideo: "Video",
+        genAnyCap: "Any model",
       },
       it: {
         placeholder: "Descrivi la scena… (es. una foto cinematografica 16:9 di una donna alla golden hour)",
@@ -522,6 +550,11 @@
         emptyGallery: "Le immagini e i video generati appariranno qui.",
         image: "Immagine",
         video: "Video",
+        genLabel: "Genera:",
+        genAuto: "Auto",
+        genImage: "Immagine",
+        genVideo: "Video",
+        genAnyCap: "Qualsiasi modello",
       }
     };
 
@@ -541,6 +574,7 @@
       currentLang = currentLang === 'en' ? 'it' : 'en';
       applyLang();
       renderMediaGallery();
+      renderCapOptions();
     };
 
     applyLang();
@@ -697,6 +731,7 @@
       };
       settings = await api.saveSettings(updated);
       settingsModal.style.display = 'none';
+      loadCapabilities();
     }
 
     settingsService.onchange = updateCustomUrlVisibility;
@@ -788,18 +823,81 @@
 
     attachBtn.onclick = () => fileInput.click();
 
+    const genMode = document.getElementById('genMode');
+    const genCap = document.getElementById('genCap');
+    let capabilities = [];
+
+    const IMAGE_CAP_RE = /image|img|t2i|krea|flux|seedream|imagen|recraft|dall|sdxl|stable|photo/i;
+    const VIDEO_CAP_RE = /video|i2v|t2v|v2v|minimax|kling|ltx|veo|seedance|wan|sora|hailuo|pika|runway|animate/i;
+
+    function capType(cap) {
+      const s = `${cap.name || ''} ${cap.description || ''}`;
+      if (VIDEO_CAP_RE.test(s)) return 'video';
+      if (IMAGE_CAP_RE.test(s)) return 'image';
+      return null;
+    }
+
+    function renderCapOptions() {
+      const mode = genMode.value;
+      const prev = genCap.value;
+      genCap.innerHTML = '';
+      const any = document.createElement('option');
+      any.value = '';
+      any.textContent = t('genAnyCap');
+      genCap.appendChild(any);
+      capabilities
+        .map(c => ({ ...c, type: capType(c) }))
+        .filter(c => c.type && (mode === 'auto' || c.type === mode))
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.name;
+          opt.textContent = c.name;
+          genCap.appendChild(opt);
+        });
+      if ([...genCap.options].some(o => o.value === prev)) genCap.value = prev;
+    }
+
+    async function loadCapabilities() {
+      try {
+        capabilities = api ? await api.capabilities() : await fetch('/api/capabilities').then(r => r.json());
+        if (!Array.isArray(capabilities)) capabilities = [];
+      } catch (_) {
+        capabilities = [];
+      }
+      renderCapOptions();
+    }
+
+    genMode.onchange = renderCapOptions;
+    genCap.onchange = () => {
+      const sel = capabilities.find(c => c.name === genCap.value);
+      const type = sel && capType(sel);
+      if (type) {
+        genMode.value = type;
+        renderCapOptions();
+        genCap.value = sel.name;
+      }
+    };
+
     async function send() {
       const text = input.value.trim();
       if (!text && !attached.b64) return;
       const userText = text || (attached.type === 'video' ? t('attachedVideo') : t('attachedImage'));
+
+      const selectedCap = genCap.value;
+      const selectedMode = genMode.value;
+      let sendText = userText;
+      if (selectedCap) sendText = `use ${selectedCap}. ${userText}`;
+      else if (selectedMode !== 'auto') sendText = `${userText}\n[generate ${selectedMode === 'image' ? 'an image' : 'a video'}]`;
 
       let attachmentHtml = '';
       if (attached.b64) {
         const chipLabel = attached.type === 'video' ? t('attachedVideo') : t('attachedImage');
         attachmentHtml = `<div class="attachment-chip">${attached.type === 'video' ? '🎬' : '🖼️'} ${chipLabel}</div><br>`;
       }
+      if (selectedCap) attachmentHtml += `<div class="attachment-chip">⚙️ ${escapeHtml(selectedCap)}</div><br>`;
       appendBubble('user', attachmentHtml + escapeHtml(userText));
-      messages.push({ role: 'user', content: userText });
+      messages.push({ role: 'user', content: sendText });
 
       input.value = '';
       spinner.style.display = 'flex';
@@ -857,6 +955,8 @@
       return s.replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
     }
 
+    renderCapOptions();
+    loadCapabilities();
     appendBubble('bot', t('welcome'));
   </script>
 </body>

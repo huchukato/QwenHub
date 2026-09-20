@@ -255,12 +255,14 @@ ipcMain.handle('saveSettings', async (_event, settings) => {
   return { ...appSettings };
 });
 
-ipcMain.handle('capabilities', async () => {
+async function getCapabilities() {
   if (!cachedCapabilities.length) {
     cachedCapabilities = await listCapabilities(appSettings.livepeer_api_key || '');
   }
   return cachedCapabilities;
-});
+}
+
+ipcMain.handle('capabilities', async () => getCapabilities());
 
 ipcMain.handle('loadFile', async (_event, filePath) => {
   const clean = filePath.replace(/^file:\/\//, '');
@@ -268,7 +270,7 @@ ipcMain.handle('loadFile', async (_event, filePath) => {
 });
 
 ipcMain.handle('chat', async (_event, { messages, imageB64, videoB64, lastOutputUrl }) => {
-  const caps = await ipcMain.handle('capabilities')();
+  const caps = await getCapabilities();
 
   let userContent = [{ type: 'text', text: messages[messages.length - 1]?.content || '' }];
   let referenceImageUrl = null;

@@ -6,14 +6,15 @@
   <title>QwenHub — Livepeer Agent Director</title>
   <style>
     :root {
-      --bg: #0f0f12;
-      --panel: #18181c;
-      --border: #2a2a30;
-      --text: #e8e8ee;
-      --muted: #9ca3af;
-      --accent: #22d3ee;
+      --bg: #0b1016;
+      --panel: #141c26;
+      --border: #1f2d3d;
+      --text: #e6f4ff;
+      --muted: #93adc4;
+      --accent: #0ea5e9;
+      --accent-warm: #f97316;
       --danger: #f87171;
-      --radius: 12px;
+      --radius: 14px;
     }
     * { box-sizing: border-box; }
     body {
@@ -28,11 +29,12 @@
     header {
       padding: 16px 20px;
       border-bottom: 1px solid var(--border);
+      background: linear-gradient(90deg, rgba(14,165,233,0.08), rgba(249,115,22,0.04));
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
-    header h1 { margin: 0; font-size: 18px; }
+    header h1 { margin: 0; font-size: 18px; color: var(--text); }
     header span { color: var(--muted); font-size: 13px; }
     #chat {
       flex: 1;
@@ -50,7 +52,12 @@
       font-size: 14px;
       white-space: pre-wrap;
     }
-    .user { align-self: flex-end; background: #2563eb; }
+    .user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, #0ea5e9, #06b6d4);
+      color: #021018;
+      font-weight: 500;
+    }
     .bot { align-self: flex-start; background: var(--panel); border: 1px solid var(--border); }
     .msg img, .msg video {
       max-width: 100%;
@@ -115,8 +122,8 @@
       field-sizing: content;
     }
     button {
-      background: var(--accent);
-      color: #0f0f12;
+      background: linear-gradient(135deg, var(--accent), #06b6d4);
+      color: #021018;
       border: none;
       border-radius: var(--radius);
       padding: 0 18px;

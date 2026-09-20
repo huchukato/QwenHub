@@ -29,15 +29,20 @@
     "files": [
       "electron/**/*",
       "static/**/*",
+      "img/icon.icns",
+      "img/icon.png",
       "package.json"
     ],
     "mac": {
+      "icon": "img/icon.icns",
       "target": ["dmg", "zip"]
     },
     "win": {
+      "icon": "img/icon.png",
       "target": ["nsis", "portable"]
     },
     "linux": {
+      "icon": "img/icon.png",
       "target": ["AppImage", "deb"]
     }
   }

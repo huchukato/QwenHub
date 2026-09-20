@@ -11,11 +11,13 @@ const OUTPUT_DIR = path.join(app.getPath('userData'), 'outputs');
 if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
 let mainWindow;
+const ICON_PNG = path.join(__dirname, '..', 'img', 'icon.png');
 
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 880,
+    icon: process.platform === 'darwin' ? undefined : ICON_PNG,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

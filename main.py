@@ -3,6 +3,7 @@
 import base64
 import json
 import os
+import re
 import uuid
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,43 @@ app.add_middleware(
 
 LIVEPEER_API_KEY = os.getenv("LIVEPEER_API_KEY", "")
 _DEFAULT_CAPABILITIES: list[dict] = []
+
+
+def _resolve_capability(raw_name: str, mode: str, caps: list[dict]) -> str | None:
+    name = (raw_name or "").strip().lower()
+    if not name:
+        return None
+    if not caps:
+        return raw_name
+
+    exact = next((c["name"] for c in caps if c.get("name", "").lower() == name), None)
+    if exact:
+        return exact
+
+    contains = next(
+        (c["name"] for c in caps if name in c.get("name", "").lower() or c.get("name", "").lower() in name),
+        None,
+    )
+    if contains:
+        return contains
+
+    words = [w for w in name.replace("-", " ").replace("_", " ").split() if len(w) > 2]
+    if words:
+        best = max(
+            ((c, sum(1 for w in words if w in c.get("name", "").lower())) for c in caps),
+            key=lambda x: x[1],
+        )
+        if best[1] > 0:
+            return best[0]["name"]
+
+    if mode == "image":
+        fallback = next((c for c in caps if re.search(r"flux|image|schnell|dev|pro", c.get("name", ""), re.I)), None)
+    else:
+        fallback = next(
+            (c for c in caps if re.search(r"i2v|t2v|video|minimax|kling|ltx|veo|seedance|wan", c.get("name", ""), re.I)),
+            None,
+        )
+    return fallback["name"] if fallback else raw_name
 
 
 async def _cached_capabilities() -> list[dict]:
@@ -108,7 +146,7 @@ async def chat(payload: dict[str, Any]):
         return {"message": result.get("message", ""), "action": None}
 
     mode = action.get("mode", "video")
-    capability = action.get("capability")
+    capability = _resolve_capability(action.get("capability"), mode, caps)
     prompt = action.get("prompt", "")
     duration = action.get("duration")
     aspect_ratio = action.get("aspect_ratio")

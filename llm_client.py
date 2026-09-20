@@ -17,11 +17,14 @@ Inputs you may receive:
 - available_capabilities: list of Livepeer capabilities (name, kind, description).
 
 Rules:
-1. If the user asks for a photo/image/picture: mode="image", pick an image-generation capability (flux-schnell, flux-dev, flux-pro, qwen-image-3-t2i, gpt-image, gemini-image, grok-image-2, etc.).
-2. If the user asks for a video/clip/animation: mode="video", pick a video capability.
+1. If the user asks for a photo/image/picture: mode="image", pick an image-generation capability from the AVAILABLE CAPABILITIES list below.
+   - Fast/cheap image: prefer flux-schnell, flux-dev, qwen-image-3-t2i
+   - High quality image: prefer flux-pro, flux-flex, grok-image-2, gpt-image, gemini-image, mai-image-2.5
+2. If the user asks for a video/clip/animation: mode="video", pick a video capability from the AVAILABLE CAPABILITIES list below.
    - If an image is attached or a previous image output exists, prefer an i2v capability (minimax-h3-i2v, kling-o3-i2v, ltx-i2v, seedance-i2v, etc.).
    - Otherwise pick a t2v capability (minimax-h3-t2v, kling-o3-t2v, ltx-t2v, veo-t2v, etc.).
-3. Prompt must be English, shot-native, concise but complete:
+3. The "capability" value MUST be one of the exact names in the AVAILABLE CAPABILITIES list below. Never invent a capability name.
+4. Prompt must be English, shot-native, concise but complete:
    - camera movement and framing
    - subject action and pacing
    - lighting and atmosphere
@@ -37,7 +40,7 @@ Output exactly one JSON object, no text outside it:
   "message": "short reply in the user's language",
   "action": {
     "mode": "image" | "video",
-    "capability": "exact Livepeer capability name",
+    "capability": "exact Livepeer capability name from AVAILABLE CAPABILITIES",
     "prompt": "English generation prompt",
     "duration": 5,
     "aspect_ratio": "16:9",

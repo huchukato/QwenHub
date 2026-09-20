@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, protocol, net } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -8,6 +8,11 @@ const OpenAI = require('openai');
 
 const MCP_ENDPOINT = 'https://agent.livepeer.org/api/mcp/raw';
 const OUTPUT_DIR = path.join(app.getPath('userData'), 'outputs');
+
+protocol.registerSchemesAsPrivileged([{
+  scheme: 'qwenhub',
+  privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true },
+}]);
 const SETTINGS_PATH = path.join(app.getPath('userData'), 'settings.json');
 if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
@@ -60,10 +65,40 @@ function createWindow() {
 app.whenReady().then(() => {
   protocol.handle('qwenhub', (request) => {
     const url = new URL(request.url);
-    let pathname = decodeURIComponent(url.pathname);
-    if (pathname.startsWith('/')) pathname = pathname.slice(1);
-    const filePath = path.join(OUTPUT_DIR, pathname);
-    return net.fetch('file://' + filePath);
+    const filename = path.basename(decodeURIComponent(url.pathname));
+    const filePath = path.join(OUTPUT_DIR, filename);
+    if (!filename || !fs.existsSync(filePath)) {
+      return new Response('Not found', { status: 404 });
+    }
+
+    const data = fs.readFileSync(filePath);
+    const contentType = detectMime(data, filename);
+    const range = request.headers.get('range');
+    if (range) {
+      const match = range.match(/bytes=(\d*)-(\d*)/);
+      if (match) {
+        const start = match[1] ? Number(match[1]) : 0;
+        const end = match[2] ? Math.min(Number(match[2]), data.length - 1) : data.length - 1;
+        const chunk = data.subarray(start, end + 1);
+        return new Response(chunk, {
+          status: 206,
+          headers: {
+            'Content-Type': contentType,
+            'Content-Length': String(chunk.length),
+            'Content-Range': `bytes ${start}-${end}/${data.length}`,
+            'Accept-Ranges': 'bytes',
+          },
+        });
+      }
+    }
+
+    return new Response(data, {
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': String(data.length),
+        'Accept-Ranges': 'bytes',
+      },
+    });
   });
   createWindow();
 });

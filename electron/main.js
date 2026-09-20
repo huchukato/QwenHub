@@ -110,6 +110,42 @@ function httpGet(url, headers = {}) {
   });
 }
 
+function httpPut(url, data, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const target = new URL(url);
+    const req = https.request({
+      method: 'PUT',
+      hostname: target.hostname,
+      port: target.port || 443,
+      path: target.pathname + target.search,
+      headers: { ...headers, 'Content-Length': data.length },
+    }, (res) => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => {
+        const body = Buffer.concat(chunks).toString('utf8');
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          reject(new Error(`Signed upload failed (${res.statusCode}): ${body}`));
+          return;
+        }
+        resolve(body);
+      });
+    });
+    req.on('error', reject);
+    req.write(data);
+    req.end();
+  });
+}
+
+function detectMime(buffer, filename) {
+  if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png';
+  if (buffer[0] === 0xff && buffer[1] === 0xd8) return 'image/jpeg';
+  if (buffer.subarray(0, 4).toString() === 'RIFF' && buffer.subarray(8, 12).toString() === 'WEBP') return 'image/webp';
+  if (buffer.subarray(4, 8).toString() === 'ftyp') return 'video/mp4';
+  const ext = path.extname(filename || '').toLowerCase();
+  return ({ '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime' })[ext] || 'application/octet-stream';
+}
+
 function extractUrl(payload) {
   for (const key of ['url', 'video_url', 'output_url', 'asset_url', 'result_url']) {
     if (typeof payload[key] === 'string' && payload[key].startsWith('http')) return payload[key];
@@ -167,11 +203,22 @@ async function listCapabilities(apiKey) {
 }
 
 async function uploadFile(b64, filename, apiKey) {
-  const headers = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
-  const data = await mcpCall('upload', { filename, data: b64, content_type: 'application/octet-stream' }, apiKey);
-  const url = extractUrl(data);
-  if (!url) throw new Error('upload returned no URL');
-  return url;
+  const buffer = Buffer.from(b64, 'base64');
+  const contentType = detectMime(buffer, filename);
+  const signed = await mcpCall('create_upload_url', {
+    filename,
+    content_type: contentType,
+    size: buffer.length,
+  }, apiKey);
+  if (!signed.upload_url || !signed.public_url) {
+    throw new Error('create_upload_url returned no signed/public URL');
+  }
+  const uploadHeaders = { ...(signed.headers || {}) };
+  if (!Object.keys(uploadHeaders).some(key => key.toLowerCase() === 'content-type')) {
+    uploadHeaders['Content-Type'] = contentType;
+  }
+  await httpPut(signed.upload_url, buffer, uploadHeaders);
+  return signed.public_url;
 }
 
 async function runCapability(name, inputs, apiKey) {

@@ -1,40 +1,63 @@
-# QwenHub
+<p align="center">
+  <img src="img/banner.jpeg" alt="QwenHub banner" width="720" />
+</p>
 
-A standalone chat director for the [Livepeer Agent](https://agent.livepeer.org) network.
+<h1 align="center">🎬 QwenHub</h1>
 
-QwenHub lets you talk to a Qwen-style LLM (via any OpenAI-compatible API) and have it decide the right Livepeer capability, prompt, duration, and aspect ratio. Attach a reference image to drive image-to-video generation, then click the result to refine it.
+<p align="center">
+  <strong>Chat with Qwen. Direct Livepeer. Generate images & videos — no ComfyUI required.</strong>
+</p>
 
-> Built as a lightweight alternative to the ComfyUI integration in [`ComfyUI-QwenVL-Mod`](https://github.com/huchukato/ComfyUI-QwenVL-Mod).
+<p align="center">
+  <img alt="Electron" src="https://img.shields.io/badge/Electron-191970?style=flat&logo=electron&logoColor=white" />
+  <img alt="Livepeer" src="https://img.shields.io/badge/Livepeer-00EBB4?style=flat&logo=livepeer&logoColor=black" />
+  <img alt="Qwen" src="https://img.shields.io/badge/Qwen-000000?style=flat&logo=alibaba-cloud&logoColor=white" />
+  <img alt="License" src="https://img.shields.io/badge/license-GPL--3.0-blue" />
+  <img alt="macOS" src="https://img.shields.io/badge/macOS-000000?style=flat&logo=apple&logoColor=white" />
+  <img alt="Windows" src="https://img.shields.io/badge/Windows-0078D6?style=flat&logo=windows&logoColor=white" />
+  <img alt="Linux" src="https://img.shields.io/badge/Linux-FCC624?style=flat&logo=linux&logoColor=black" />
+</p>
 
-## How it works
+---
 
-1. **Chat** describes what you want (photo, video, camera move, refine).
-2. **Qwen** picks a Livepeer capability (image models like `flux-schnell`, video models like `minimax-h3-i2v`, etc.).
-3. **Livepeer MCP** runs the generation asynchronously, polls for completion, and downloads the result.
-4. **Preview** the image or video in chat and click it to use as the next reference.
+**QwenHub** is a standalone desktop chat app that turns natural language into images and videos through the [Livepeer Agent](https://agent.livepeer.org) network.
 
-## Desktop app (Electron)
+Describe a shot, attach a reference photo, or drop a previously generated clip — QwenHub picks the right Livepeer capability, writes the prompt, and polls the job until the media is ready. Everything happens inside one window: no ComfyUI, no node graph, no manual parameter tuning.
+
+Built for the **Livepeer Agent Builder** hackathon track.
+
+> A heavier, node-based version is also available in [`ComfyUI-QwenVL-Mod`](https://github.com/huchukato/ComfyUI-QwenVL-Mod).
+
+## ✨ Features
+
+- 💬 **Natural-language director** — tell Qwen what you want in English or Italian.
+- 🖼️ **Image generation** — `flux-schnell`, `flux-dev`, `gpt-image`, `gemini-image`, `qwen-image-3-t2i`, etc.
+- 🎞️ **Image-to-video & text-to-video** — `minimax-h3-i2v`, `kling-o3-i2v`, `ltx-i2v`, `ltx-t2v`, and more.
+- 🔄 **Refine loop** — click any generated image or clip to use it as the next reference.
+- ⚙️ **In-app settings** — set your OpenAI-compatible API key, base URL, model, and optional Livepeer key.
+- 🌍 **EN / IT language switch** — frontend toggles between English and Italian.
+- 🖥️ **Desktop app** — Electron wrapper with cross-platform builds.
+- 🐳 **Optional web / Docker mode** — FastAPI backend for self-hosting.
+
+## 🚀 Quick start (desktop)
 
 ```bash
 cp .env.example .env
-# edit .env with your OpenAI-compatible key and optional Livepeer key
+# edit .env: OPENAI_API_KEY + OPENAI_BASE_URL
 npm install
 npm start
 ```
 
-To build:
+Build a release:
 
 ```bash
-npm run build:mac    # or :win, :linux
+npm run build:mac    # or :win / :linux
 ```
 
-The Electron main process handles the LLM call and Livepeer MCP directly; no Python server is required.
-
-## Web / server mode (FastAPI + Python)
+## 🌐 Web / server mode
 
 ```bash
 cp .env.example .env
-# edit .env with your OpenAI-compatible key and optional Livepeer key
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -43,36 +66,66 @@ uvicorn main:app --reload
 
 Open `http://localhost:8000`.
 
-## Docker
+## 🐳 Docker
 
 ```bash
 docker build -t qwenhub .
 docker run -p 8000:8000 --env-file .env qwenhub
 ```
 
-Works on Hugging Face Spaces, Render, Railway, or any container host.
-
-## Environment variables
+## ⚙️ Environment variables
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `OPENAI_BASE_URL` | `https://openrouter.ai/api/v1` | LLM API base URL |
 | `OPENAI_API_KEY` | *(required)* | LLM API key |
 | `MODEL` | `qwen/qwen-2.5-7b-instruct` | Chat model |
-| `LIVEPEER_API_KEY` | *(empty)* | Optional Livepeer key |
+| `LIVEPEER_API_KEY` | *(empty)* | Optional Livepeer key (demo mode works without it) |
 
-## Project structure
+## 🏗️ Architecture
+
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│   QwenHub UI    │────▶│  Electron main.js  │────▶│  OpenAI-compat  │
+│  (EN / IT chat) │     │  LLM + Livepeer   │     │   LLM (Qwen)    │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+                                │
+                                ▼
+                         ┌──────────────┐
+                         │ Livepeer MCP │
+                         │ upload/run/  │
+                         │   poll       │
+                         └──────────────┘
+                                │
+                                ▼
+                         ┌──────────────┐
+                         │  output/     │
+                         │  preview     │
+                         └──────────────┘
+```
+
+## 📁 Project structure
 
 ```
 QwenHub/
 ├── electron/
 │   ├── main.js        # Electron main process (LLM + Livepeer)
 │   └── preload.js     # Secure renderer bridge
-├── static/index.html   # Chat UI (works in Electron and web)
-├── main.py             # FastAPI backend (web mode)
-├── livepeer_client.py  # Raw MCP client for Livepeer (web mode)
-├── llm_client.py       # OpenAI-compatible chat (web mode)
+├── static/
+│   ├── index.html     # Chat UI (EN/IT)
+│   └── icon.png       # In-app logo
+├── img/
+│   ├── icon.icns      # macOS app icon
+│   ├── icon.png       # Windows/Linux icon
+│   └── banner.jpeg    # README banner
+├── main.py            # FastAPI backend (web mode)
+├── livepeer_client.py # Raw MCP client for Livepeer (web mode)
+├── llm_client.py      # OpenAI-compatible chat (web mode)
 ├── package.json
 ├── Dockerfile
 └── requirements.txt
 ```
+
+## 📝 License
+
+GPL-3.0

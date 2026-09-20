@@ -1,7 +1,7 @@
 {
   "name": "qwenhub",
   "version": "0.1.0",
-  "description": "QwenHub — chat director for Livepeer Agent",
+  "description": "Desktop chat app that turns natural language into images and videos via the Livepeer Agent network.",
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",

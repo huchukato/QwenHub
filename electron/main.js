@@ -330,8 +330,12 @@ ipcMain.handle('loadMediaUrl', async (_event, url) => {
   return blob.toString('base64');
 });
 
-ipcMain.handle('chat', async (_event, { messages, imageB64, videoB64, lastOutputUrl }) => {
+ipcMain.handle('chat', async (_event, payload) => {
   try {
+    const messages = payload.messages || [];
+    const imageB64 = payload.image_b64 || payload.imageB64 || null;
+    const videoB64 = payload.video_b64 || payload.videoB64 || null;
+    const lastOutputUrl = payload.last_output_url || payload.lastOutputUrl || null;
     const caps = await getCapabilities();
 
     let userContent = [{ type: 'text', text: messages[messages.length - 1]?.content || '' }];
@@ -366,11 +370,28 @@ ipcMain.handle('chat', async (_event, { messages, imageB64, videoB64, lastOutput
       throw new Error(`LLM did not return valid JSON: ${e.message}\nRaw: ${raw}`);
     }
 
-    const action = data.action;
-    if (!action) return { message: data.message || '', action: null };
+    let action = data.action;
+    if (!action) {
+      const userText = userContent[0].text || '';
+      const explicit = userText.match(/\buse\s+([a-z0-9][a-z0-9._-]*)[.:]?\s*/i);
+      if (!explicit) return { message: data.message || '', action: null };
+      const capability = resolveCapability(explicit[1], /i2v|t2v|video|minimax|kling|ltx|veo|seedance|wan/i.test(explicit[1]) ? 'video' : 'image');
+      const mode = /i2v|t2v|video|minimax|kling|ltx|veo|seedance|wan/i.test(capability || '') ? 'video' : 'image';
+      action = {
+        mode,
+        capability,
+        prompt: userText.replace(explicit[0], '').trim(),
+        duration: mode === 'video' ? Number((userText.match(/\b(\d+)\s*(?:s|sec|seconds?)\b/i) || [])[1] || 5) : null,
+        aspect_ratio: (userText.match(/\b(\d+:\d+)\b/) || [])[1] || '16:9',
+        use_reference: mode === 'video' && Boolean(imageB64 || lastOutputUrl),
+      };
+    }
 
     // Validate/fallback capability name against Livepeer list
     action.capability = resolveCapability(action.capability, action.mode);
+    if (action.mode === 'video' && imageB64 && /i2v|image.to.video/i.test(action.capability || '')) {
+      action.use_reference = true;
+    }
 
     let imageUrl = null;
     if (action.use_reference) {

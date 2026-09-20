@@ -408,7 +408,7 @@ ipcMain.handle('chat', async (_event, { messages, imageB64, videoB64, lastOutput
     return {
       message: data.message || '',
       action,
-      mediaUrl: `qwenhub://output/${filename}`,
+      media_url: `qwenhub://output/${filename}`,
       mode: action.mode,
       report,
     };

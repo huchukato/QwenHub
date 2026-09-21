@@ -8,7 +8,7 @@ First public release of **QwenHub**: a standalone desktop app where a Qwen-compa
 
 | Platform | File |
 |---|---|
-| macOS (Apple Silicon) | `QwenHub-0.1.0-arm64.dmg` / `QwenHub-0.1.0-arm64-mac.zip` |
+| macOS (Apple Silicon) | `QwenHub-0.1.0-arm64.dmg` |
 | Windows (x64, installer) | `QwenHub.Setup.0.1.0.exe` |
 | Windows (x64, portable) | `QwenHub.0.1.0.exe` |
 | Linux (x64) | `QwenHub-0.1.0.AppImage` / `qwenhub_0.1.0_amd64.deb` |

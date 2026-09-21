@@ -7,11 +7,14 @@
     "start": "electron .",
     "build": "electron-builder",
     "build:mac": "electron-builder --mac",
-    "build:win": "electron-builder --win",
-    "build:linux": "electron-builder --linux"
+    "build:win": "electron-builder --win --x64",
+    "build:linux": "electron-builder --linux --x64"
   },
   "keywords": ["livepeer", "qwen", "ai", "video-generation"],
-  "author": "huchukato",
+  "author": {
+    "name": "huchukato",
+    "email": "huchukato@users.noreply.github.com"
+  },
   "license": "GPL-3.0",
   "devDependencies": {
     "electron": "^32.1.2",

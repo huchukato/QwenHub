@@ -9,10 +9,14 @@ First public release of **QwenHub**: a standalone desktop app where a Qwen-compa
 | Platform | File |
 |---|---|
 | macOS (Apple Silicon) | `QwenHub-0.1.0-arm64.dmg` / `QwenHub-0.1.0-arm64-mac.zip` |
+| Windows (x64, installer) | `QwenHub.Setup.0.1.0.exe` |
+| Windows (x64, portable) | `QwenHub.0.1.0.exe` |
+| Linux (x64) | `QwenHub-0.1.0.AppImage` / `qwenhub_0.1.0_amd64.deb` |
+| Linux (ARM64) | `QwenHub-0.1.0-arm64.AppImage` |
 
 > ⚠️ macOS builds are unsigned (no Developer ID certificate). On first launch: right-click → **Open**, or `xattr -cr /Applications/QwenHub.app`.
-
-Windows and Linux builds can be produced locally with `npm run build:win` / `npm run build:linux`.
+>
+> ⚠️ Windows builds are unsigned — SmartScreen will warn; click **More info → Run anyway**.
 
 ## Highlights
 

@@ -330,6 +330,27 @@
       font-size: 10px;
       pointer-events: none;
     }
+    .media-card .media-delete {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: rgba(2, 16, 24, 0.8);
+      color: #fff;
+      font-size: 13px;
+      line-height: 1;
+      opacity: 0;
+      transition: opacity 120ms ease;
+    }
+    .media-card:hover .media-delete { opacity: 1; }
+    .media-card .media-delete:hover { background: var(--danger); border-color: var(--danger); }
     #emptyGallery {
       grid-column: 1 / -1;
       color: var(--muted);
@@ -510,6 +531,7 @@
         genImage: "Image",
         genVideo: "Video",
         genAnyCap: "Any model",
+        deleteMedia: "Delete media",
       },
       it: {
         placeholder: "Descrivi la scena… (es. una foto cinematografica 16:9 di una donna alla golden hour)",
@@ -555,6 +577,7 @@
         genImage: "Immagine",
         genVideo: "Video",
         genAnyCap: "Qualsiasi modello",
+        deleteMedia: "Elimina media",
       }
     };
 
@@ -637,14 +660,31 @@
         const label = document.createElement('span');
         label.className = 'media-type';
         label.textContent = t(item.type);
+        const del = document.createElement('button');
+        del.className = 'media-delete';
+        del.textContent = '×';
+        del.title = t('deleteMedia');
+        del.onclick = (e) => {
+          e.stopPropagation();
+          deleteGeneratedMedia(item.url);
+        };
         card.appendChild(el);
         card.appendChild(label);
+        card.appendChild(del);
         card.onclick = async () => {
           await useAsReference(item.url, item.type);
           setMediaSidebar(false);
         };
         mediaGallery.appendChild(card);
       }
+    }
+
+    function deleteGeneratedMedia(url) {
+      generatedMedia = generatedMedia.filter(item => item.url !== url);
+      localStorage.setItem('qwenhub.generatedMedia', JSON.stringify(generatedMedia));
+      if (lastOutputUrl === url) lastOutputUrl = null;
+      if (api && url.startsWith('qwenhub://')) api.deleteOutput(url);
+      renderMediaGallery();
     }
 
     function addGeneratedMedia(url) {

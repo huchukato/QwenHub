@@ -390,6 +390,18 @@ function resolveCapability(rawName, mode) {
 
 ipcMain.handle('capabilities', async () => getCapabilities());
 
+ipcMain.handle('deleteOutput', async (_event, url) => {
+  const filename = path.basename(String(url || '').replace(/^qwenhub:\/\/output\//, ''));
+  const filePath = path.join(OUTPUT_DIR, filename);
+  if (!filePath.startsWith(OUTPUT_DIR)) return false;
+  try {
+    fs.unlinkSync(filePath);
+    return true;
+  } catch (_) {
+    return false;
+  }
+});
+
 ipcMain.handle('loadFile', async (_event, filePath) => {
   const clean = filePath.replace(/^file:\/\//, '');
   return fs.readFileSync(clean).toString('base64');

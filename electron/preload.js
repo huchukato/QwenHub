@@ -7,4 +7,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadMediaUrl: (url) => ipcRenderer.invoke('loadMediaUrl', url),
   getSettings: () => ipcRenderer.invoke('getSettings'),
   saveSettings: (settings) => ipcRenderer.invoke('saveSettings', settings),
+  deleteOutput: (url) => ipcRenderer.invoke('deleteOutput', url),
 });

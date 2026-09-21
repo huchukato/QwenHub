@@ -28,13 +28,19 @@ Built for the **Livepeer Agent Builder** hackathon track.
 
 > A heavier, node-based version is also available in [`ComfyUI-QwenVL-Mod`](https://github.com/huchukato/ComfyUI-QwenVL-Mod).
 
+## 📹 Demo
+
+▶️ **[Watch the demo on Vimeo](https://vimeo.com/1228648577)** — text-to-image with `krea-2-large`, image-to-video with `minimax-h3-i2v`, a camera-change refinement, and the media library.
+
 ## ✨ Features
 
 - 💬 **Natural-language director** — tell Qwen what you want in English or Italian.
-- 🖼️ **Image generation** — `flux-schnell`, `flux-dev`, `gpt-image`, `gemini-image`, `qwen-image-3-t2i`, etc.
+- 🖼️ **Image generation** — `nano-banana`, `krea-2-large`, `flux-pro`, `gpt-image`, `recraft-v4`, `ideogram-v4`, and more.
 - 🎞️ **Image-to-video & text-to-video** — `minimax-h3-i2v`, `kling-o3-i2v`, `ltx-i2v`, `ltx-t2v`, and more.
-- 🔄 **Refine loop** — click any generated image or clip to use it as the next reference.
-- ⚙️ **In-app settings** — set your OpenAI-compatible API key, base URL, model, and optional Livepeer key.
+- 🎛️ **Capability selectors** — pick image/video mode and any of the ~200 real Livepeer capabilities from a dropdown; no need to memorize model names.
+- 🔄 **Refine loop** — click any generated image or clip to use it as the next reference (images for i2v, videos for v2v).
+- 🗂️ **Media library** — collapsible sidebar with every generated asset; click to reuse, save to disk, or delete.
+- ⚙️ **In-app settings** — provider dropdown (OpenRouter, Ollama, llama.cpp, LM Studio, KoboldCpp, custom), API key, model, optional Livepeer key.
 - 🌍 **EN / IT language switch** — frontend toggles between English and Italian.
 - 🖥️ **Desktop app** — Electron wrapper with cross-platform builds.
 - 🐳 **Optional web / Docker mode** — FastAPI backend for self-hosting.

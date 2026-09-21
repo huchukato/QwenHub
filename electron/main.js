@@ -293,14 +293,14 @@ async function pollForMedia(jobId, apiKey, maxWait = 480) {
   throw new Error(`Livepeer job ${jobId} timed out`);
 }
 
-function pickUrlKey(desc, isVideo) {
+function acceptsVideoInput(desc) {
   const keys = Object.keys(desc?.inputs || desc?.usage?.inputs || {});
-  const wanted = isVideo
-    ? ['video_url', 'source_video', 'input_video', 'video']
-    : ['source_url', 'image_url', 'input_image', 'first_frame_url', 'start_image_url', 'reference_url', 'image'];
-  return keys.find(k => wanted.includes(k))
-      || keys.find(k => isVideo ? /video/i.test(k) : /(image|source|frame|reference)/i.test(k))
-      || null;
+  return keys.some(k => /video/i.test(k));
+}
+
+function acceptsImageInput(desc) {
+  const keys = Object.keys(desc?.inputs || desc?.usage?.inputs || {});
+  return keys.some(k => /(source_url|image|first_frame|reference)/i.test(k));
 }
 
 async function generateMedia(capability, prompt, apiKey, { imageUrl, videoUrl, lastImageFile, duration, aspectRatio }) {
@@ -315,20 +315,21 @@ async function generateMedia(capability, prompt, apiKey, { imageUrl, videoUrl, l
   }
   if (aspectRatio) inputs.aspect_ratio = aspectRatio;
 
-  const videoKey = pickUrlKey(desc, true);
-  const imageKey = pickUrlKey(desc, false);
-  if (videoUrl && videoKey) {
-    inputs[videoKey] = videoUrl;
-  } else if (imageUrl && imageKey) {
-    inputs[imageKey] = imageUrl;
-  } else if (videoUrl && imageKey && lastImageFile) {
+  // Media URLs are top-level run_capability args (source_url / video_url
+  // alias onto the key the capability declares), not nested in inputs.
+  const extraArgs = {};
+  if (videoUrl && acceptsVideoInput(desc)) {
+    extraArgs.video_url = videoUrl;
+  } else if (imageUrl) {
+    extraArgs.source_url = imageUrl;
+  } else if (videoUrl && acceptsImageInput(desc) && lastImageFile) {
     // Capability needs an image (e.g. i2v) but a video was attached:
     // reuse the last generated image as the first frame.
     const blob = fs.readFileSync(path.join(OUTPUT_DIR, lastImageFile));
-    inputs[imageKey] = await uploadFile(blob.toString('base64'), lastImageFile, apiKey);
+    extraArgs.source_url = await uploadFile(blob.toString('base64'), lastImageFile, apiKey);
   }
 
-  const submit = await runCapability(capability, inputs, apiKey);
+  const submit = await runCapability(capability, inputs, apiKey, extraArgs);
   const jobId = submit.job_id || submit.id;
   if (!jobId) throw new Error('run_capability returned no job_id');
 

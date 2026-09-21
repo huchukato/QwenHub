@@ -8,4 +8,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSettings: () => ipcRenderer.invoke('getSettings'),
   saveSettings: (settings) => ipcRenderer.invoke('saveSettings', settings),
   deleteOutput: (url) => ipcRenderer.invoke('deleteOutput', url),
+  saveOutput: (url) => ipcRenderer.invoke('saveOutput', url),
 });

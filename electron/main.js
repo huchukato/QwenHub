@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -438,6 +438,18 @@ function resolveCapability(rawName, mode) {
 }
 
 ipcMain.handle('capabilities', async () => getCapabilities());
+
+ipcMain.handle('saveOutput', async (_event, url) => {
+  const filename = path.basename(String(url || '').replace(/^qwenhub:\/\/output\//, ''));
+  const filePath = path.join(OUTPUT_DIR, filename);
+  if (!filePath.startsWith(OUTPUT_DIR) || !fs.existsSync(filePath)) return null;
+  const { canceled, filePath: dest } = await dialog.showSaveDialog({
+    defaultPath: path.join(app.getPath('downloads'), filename),
+  });
+  if (canceled || !dest) return null;
+  fs.copyFileSync(filePath, dest);
+  return dest;
+});
 
 ipcMain.handle('deleteOutput', async (_event, url) => {
   const filename = path.basename(String(url || '').replace(/^qwenhub:\/\/output\//, ''));

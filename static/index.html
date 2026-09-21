@@ -351,6 +351,39 @@
     }
     .media-card:hover .media-delete { opacity: 1; }
     .media-card .media-delete:hover { background: var(--danger); border-color: var(--danger); }
+    .media-card .media-save {
+      position: absolute;
+      top: 6px;
+      right: 32px;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: rgba(2, 16, 24, 0.8);
+      color: #fff;
+      font-size: 12px;
+      line-height: 1;
+      opacity: 0;
+      transition: opacity 120ms ease;
+    }
+    .media-card:hover .media-save { opacity: 1; }
+    .media-card .media-save:hover { background: var(--accent); border-color: var(--accent); }
+    .msg .save-link {
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: underline;
+      height: auto;
+      border-radius: 0;
+    }
     #emptyGallery {
       grid-column: 1 / -1;
       color: var(--muted);
@@ -532,6 +565,7 @@
         genVideo: "Video",
         genAnyCap: "Any model",
         deleteMedia: "Delete media",
+        saveMedia: "Save",
       },
       it: {
         placeholder: "Descrivi la scena… (es. una foto cinematografica 16:9 di una donna alla golden hour)",
@@ -578,6 +612,7 @@
         genVideo: "Video",
         genAnyCap: "Qualsiasi modello",
         deleteMedia: "Elimina media",
+        saveMedia: "Salva",
       }
     };
 
@@ -668,15 +703,37 @@
           e.stopPropagation();
           deleteGeneratedMedia(item.url);
         };
+        const save = document.createElement('button');
+        save.className = 'media-save';
+        save.textContent = '⬇';
+        save.title = t('saveMedia');
+        save.onclick = (e) => {
+          e.stopPropagation();
+          saveMedia(item.url);
+        };
         card.appendChild(el);
         card.appendChild(label);
         card.appendChild(del);
+        card.appendChild(save);
         card.onclick = async () => {
           await useAsReference(item.url, item.type);
           setMediaSidebar(false);
         };
         mediaGallery.appendChild(card);
       }
+    }
+
+    async function saveMedia(url) {
+      if (api && url.startsWith('qwenhub://')) {
+        await api.saveOutput(url);
+        return;
+      }
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = url.split('/').pop().split('?')[0] || 'media';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
     }
 
     function deleteGeneratedMedia(url) {
@@ -801,6 +858,11 @@
         const hint = document.createElement('div');
         hint.className = 'hint';
         hint.textContent = t('clickResult');
+        const saveLink = document.createElement('button');
+        saveLink.className = 'save-link';
+        saveLink.textContent = ' · ' + t('saveMedia');
+        saveLink.onclick = () => saveMedia(mediaUrl);
+        hint.appendChild(saveLink);
         div.appendChild(hint);
       }
       chat.appendChild(div);

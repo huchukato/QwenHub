@@ -256,8 +256,26 @@ async function uploadFile(b64, filename, apiKey) {
   return signed.public_url;
 }
 
-async function runCapability(name, inputs, apiKey) {
-  return mcpCall('run_capability', { capability: name, prompt: inputs.prompt || '', inputs, async: true }, apiKey);
+const capDescCache = new Map();
+async function describeCapability(name, apiKey) {
+  if (!capDescCache.has(name)) {
+    try {
+      capDescCache.set(name, await mcpCall('describe_capability', { name }, apiKey));
+    } catch (_) {
+      capDescCache.set(name, null);
+    }
+  }
+  return capDescCache.get(name);
+}
+
+async function runCapability(name, inputs, apiKey, extraArgs = {}) {
+  return mcpCall('run_capability', {
+    capability: name,
+    prompt: inputs.prompt || '',
+    inputs,
+    async: true,
+    ...extraArgs,
+  }, apiKey);
 }
 
 async function pollForMedia(jobId, apiKey, maxWait = 480) {
@@ -275,11 +293,40 @@ async function pollForMedia(jobId, apiKey, maxWait = 480) {
   throw new Error(`Livepeer job ${jobId} timed out`);
 }
 
-async function generateMedia(capability, prompt, apiKey, { imageUrl, duration, aspectRatio }) {
+function pickUrlKey(desc, isVideo) {
+  const keys = Object.keys(desc?.inputs || desc?.usage?.inputs || {});
+  const wanted = isVideo
+    ? ['video_url', 'source_video', 'input_video', 'video']
+    : ['source_url', 'image_url', 'input_image', 'first_frame_url', 'start_image_url', 'reference_url', 'image'];
+  return keys.find(k => wanted.includes(k))
+      || keys.find(k => isVideo ? /video/i.test(k) : /(image|source|frame|reference)/i.test(k))
+      || null;
+}
+
+async function generateMedia(capability, prompt, apiKey, { imageUrl, videoUrl, lastImageFile, duration, aspectRatio }) {
+  const desc = await describeCapability(capability, apiKey);
   const inputs = { prompt };
-  if (duration !== undefined && duration !== null) inputs.duration = duration;
+  if (duration !== undefined && duration !== null) {
+    let d = duration;
+    const c = desc?.constraints || {};
+    if (c.duration_min) d = Math.max(d, c.duration_min);
+    if (c.duration_max) d = Math.min(d, c.duration_max);
+    inputs.duration = d;
+  }
   if (aspectRatio) inputs.aspect_ratio = aspectRatio;
-  if (imageUrl) inputs.image_url = imageUrl;
+
+  const videoKey = pickUrlKey(desc, true);
+  const imageKey = pickUrlKey(desc, false);
+  if (videoUrl && videoKey) {
+    inputs[videoKey] = videoUrl;
+  } else if (imageUrl && imageKey) {
+    inputs[imageKey] = imageUrl;
+  } else if (videoUrl && imageKey && lastImageFile) {
+    // Capability needs an image (e.g. i2v) but a video was attached:
+    // reuse the last generated image as the first frame.
+    const blob = fs.readFileSync(path.join(OUTPUT_DIR, lastImageFile));
+    inputs[imageKey] = await uploadFile(blob.toString('base64'), lastImageFile, apiKey);
+  }
 
   const submit = await runCapability(capability, inputs, apiKey);
   const jobId = submit.job_id || submit.id;
@@ -338,6 +385,7 @@ If just chatting, set action to null.`;
 // ---------- IPC ----------
 
 let cachedCapabilities = [];
+let lastImageFile = null;
 
 ipcMain.handle('getSettings', async () => {
   return { ...appSettings };
@@ -434,12 +482,14 @@ ipcMain.handle('chat', async (_event, payload) => {
 
     let userContent = [{ type: 'text', text: messages[messages.length - 1]?.content || '' }];
     let referenceImageUrl = null;
+    let referenceVideoUrl = null;
 
     if (imageB64) {
       referenceImageUrl = await uploadFile(imageB64, 'reference.jpg', appSettings.livepeer_api_key || '');
       userContent.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageB64}` } });
     }
     if (videoB64) {
+      referenceVideoUrl = await uploadFile(videoB64, 'reference.mp4', appSettings.livepeer_api_key || '');
       userContent.push({ type: 'text', text: '[A video clip is attached for review/refinement context.]' });
     }
     messages[messages.length - 1].content = userContent;
@@ -462,17 +512,27 @@ ipcMain.handle('chat', async (_event, payload) => {
         prompt: userText.replace(explicit[0], '').trim(),
         duration: mode === 'video' ? Number((userText.match(/\b(\d+)\s*(?:s|sec|seconds?)\b/i) || [])[1] || 5) : null,
         aspect_ratio: (userText.match(/\b(\d+:\d+)\b/) || [])[1] || '16:9',
-        use_reference: mode === 'video' && Boolean(imageB64 || lastOutputUrl),
+        use_reference: mode === 'video' && Boolean(imageB64 || videoB64 || lastOutputUrl),
       };
       data = { message: '' };
     } else {
       const openai = getOpenAI();
-      const completion = await openai.chat.completions.create({
-        model: defaultModel(),
-        messages: [{ role: 'system', content: system }, ...messages],
-        temperature: 0.6,
-        max_tokens: 2048,
-      });
+      let completion;
+      try {
+        completion = await openai.chat.completions.create({
+          model: defaultModel(),
+          messages: [{ role: 'system', content: system }, ...messages],
+          temperature: 0.6,
+          max_tokens: 2048,
+        });
+      } catch (err) {
+        const status = err.status || (err.response && err.response.status);
+        const is429 = status === 429 || /429|rate.limit|too many requests/i.test(err.message);
+        const isProviderError = (status && status >= 500 && status < 600) || /503|502|504|provider returned error/i.test(err.message);
+        if (is429) return { error: 'rate_limit', message: 'Rate limit hit by the free model provider. Wait a few seconds and try again, or switch to a non-free / local model in Settings.' };
+        if (isProviderError) return { error: 'provider_error', message: 'The model provider is temporarily unavailable (HTTP ' + (status || '503') + '). Wait a moment and retry, or switch model/provider in Settings.' };
+        throw err;
+      }
 
       const raw = stripFences(completion.choices[0].message.content || '{}');
       try {
@@ -491,9 +551,13 @@ ipcMain.handle('chat', async (_event, payload) => {
     }
 
     let imageUrl = null;
+    let videoUrl = null;
     if (action.use_reference) {
-      if (referenceImageUrl) imageUrl = referenceImageUrl;
-      else if (lastOutputUrl) {
+      if (referenceImageUrl) {
+        imageUrl = referenceImageUrl;
+      } else if (referenceVideoUrl) {
+        videoUrl = referenceVideoUrl;
+      } else if (lastOutputUrl) {
         let blob;
         let localPath = null;
         if (lastOutputUrl.startsWith('qwenhub://output/')) {
@@ -507,11 +571,13 @@ ipcMain.handle('chat', async (_event, payload) => {
           blob = await httpGet(lastOutputUrl, headers);
         }
         const ext = path.extname(localPath || lastOutputUrl) || '.bin';
-        imageUrl = await uploadFile(blob.toString('base64'), `reference${ext}`, appSettings.livepeer_api_key || '');
+        const hosted = await uploadFile(blob.toString('base64'), `reference${ext}`, appSettings.livepeer_api_key || '');
+        if (/\.(mp4|webm|mov|mkv)$/i.test(ext)) videoUrl = hosted;
+        else imageUrl = hosted;
       }
     }
 
-    const genOptions = { imageUrl, aspectRatio: action.aspect_ratio };
+    const genOptions = { imageUrl, videoUrl, lastImageFile, aspectRatio: action.aspect_ratio };
     if (action.mode === 'video') {
       genOptions.duration = action.duration;
     }
@@ -522,6 +588,7 @@ ipcMain.handle('chat', async (_event, payload) => {
       appSettings.livepeer_api_key || '',
       genOptions,
     );
+    if (action.mode === 'image') lastImageFile = filename;
 
     return {
       message: data.message || '',
@@ -531,21 +598,6 @@ ipcMain.handle('chat', async (_event, payload) => {
       report,
     };
   } catch (err) {
-    const status = err.status || (err.response && err.response.status);
-    const is429 = status === 429 || /429|rate.limit|too many requests/i.test(err.message);
-    const isProviderError = (status && status >= 500 && status < 600) || /503|502|504|provider returned error/i.test(err.message);
-    if (is429) {
-      return {
-        error: 'rate_limit',
-        message: 'Rate limit hit by the free model provider. Wait a few seconds and try again, or switch to a non-free / local model in Settings.',
-      };
-    }
-    if (isProviderError) {
-      return {
-        error: 'provider_error',
-        message: 'The model provider is temporarily unavailable (HTTP ' + (status || '503') + '). Wait a moment and retry, or switch model/provider in Settings.',
-      };
-    }
     throw err;
   }
 });

@@ -566,6 +566,7 @@
         genAnyCap: "Any model",
         deleteMedia: "Delete media",
         saveMedia: "Save",
+        genOtherCaps: "Other capabilities",
       },
       it: {
         placeholder: "Descrivi la scena… (es. una foto cinematografica 16:9 di una donna alla golden hour)",
@@ -613,6 +614,7 @@
         genAnyCap: "Qualsiasi modello",
         deleteMedia: "Elimina media",
         saveMedia: "Salva",
+        genOtherCaps: "Altre capability",
       }
     };
 
@@ -947,16 +949,30 @@
       any.value = '';
       any.textContent = t('genAnyCap');
       genCap.appendChild(any);
-      capabilities
-        .map(c => ({ ...c, type: capType(c) }))
+      const classified = capabilities.map(c => ({ ...c, type: capType(c) }));
+      const matched = classified
         .filter(c => c.type && (mode === 'auto' || c.type === mode))
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .forEach(c => {
+        .sort((a, b) => a.name.localeCompare(b.name));
+      const others = classified
+        .filter(c => !matched.includes(c))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      matched.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.name;
+        opt.textContent = c.name;
+        genCap.appendChild(opt);
+      });
+      if (others.length) {
+        const group = document.createElement('optgroup');
+        group.label = t('genOtherCaps');
+        others.forEach(c => {
           const opt = document.createElement('option');
           opt.value = c.name;
           opt.textContent = c.name;
-          genCap.appendChild(opt);
+          group.appendChild(opt);
         });
+        genCap.appendChild(group);
+      }
       if ([...genCap.options].some(o => o.value === prev)) genCap.value = prev;
     }
 
